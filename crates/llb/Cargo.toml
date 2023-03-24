@@ -1,0 +1,12 @@
+[package]
+name = "buildkit-rs-llb"
+description = "LLB library in Rust"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+buildkit-rs-proto = { path = "../proto" }
+shlex = "1.1.0"

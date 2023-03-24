@@ -1,0 +1,24 @@
+[package]
+name = "buildkit-rs"
+description = "Rust client for BuildKit"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+buildkit-rs-llb = { path = "crates/llb", package = "buildkit-rs-llb" }
+buildkit-rs-proto = { path = "crates/proto", package = "buildkit-rs-proto" }
+buildkit-rs-util = { path = "crates/util", package = "buildkit-rs-util" }
+
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Grant Gurvis", "cicada.build"]
+homepage = "https://cicada.build"
+license = "Apache-2.0 OR MIT"

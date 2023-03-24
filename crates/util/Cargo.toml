@@ -1,0 +1,10 @@
+[package]
+name = "buildkit-rs-util"
+description = "BuildKit utilities for Rust"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+# This crate should not have any dependencies, as is used by all other crates.
