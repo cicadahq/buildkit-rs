@@ -7,4 +7,4 @@ authors.workspace = true
 homepage.workspace = true
 license.workspace = true
 
-# This crate should not have any dependencies, as is used by all other crates.
+# This crate should not have any large dependencies, as is used by all other crates.

@@ -1,11 +1,11 @@
 use std::io::Write;
 
-use buildkit_rs::{llb::exec::shlex, util::system::DEFAULT_PATH_ENV_UNIX};
+use buildkit_rs::{llb::exec::Exec, util::system::DEFAULT_PATH_ENV_UNIX};
 
 fn main() {
     let opt = build_opt();
     let bk = buildkit(&opt);
-    let out = bk.run(shlex("ls -l /bin")); // debug output
+    let out = bk.run(Exec::shlex("ls -l /bin")); // debug output
 
     let dt: Vec<u8> = out.serialize().unwrap();
 
@@ -17,38 +17,38 @@ fn go_build_base() -> State {
     image("docker.io/library/golang:1.20-alpine")
         .add_env("PATH", format!("/usr/local/go/bin:{DEFAULT_PATH_ENV_UNIX}"))
         .add_env("GOPATH", "/go")
-        .run(shlex("apk add --no-cache g++ linux-headers"))
-        .run(shlex("apk add --no-cache git libseccomp-dev make"))
+        .run(Exec::shlex("apk add --no-cache g++ linux-headers"))
+        .run(Exec::shlex("apk add --no-cache git libseccomp-dev make"))
         .root()
 }
 
 fn runc(version: &str) -> State {
     go_build_base()
-        .run(shlex("git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc"))
+        .run(Exec::shlex("git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc"))
         .dir("/go/src/github.com/opencontainers/runc")
-        .run(shlex(format!("git checkout -q {version}")))
-        .run(shlex("go build -o /usr/bin/runc ./"))
+        .run(Exec::shlex(format!("git checkout -q {version}")))
+        .run(Exec::shlex("go build -o /usr/bin/runc ./"))
         .root()
 }
 
 fn containerd(version: &str) -> State {
     go_build_base()
-        .run(shlex("apk add --no-cache btrfs-progs-dev"))
-        .run(shlex("git clone https://github.com/containerd/containerd.git /go/src/github.com/containerd/containerd"))
+        .run(Exec::shlex("apk add --no-cache btrfs-progs-dev"))
+        .run(Exec::shlex("git clone https://github.com/containerd/containerd.git /go/src/github.com/containerd/containerd"))
         .dir("/go/src/github.com/containerd/containerd")
-        .run(shlex(format!("git checkout -q {version}")))
-        .run(shlex("make bin/containerd"))
+        .run(Exec::shlex(format!("git checkout -q {version}")))
+        .run(Exec::shlex("make bin/containerd"))
         .root()
 }
 
 fn buildkit(opt: &BuildOpt) -> State {
     let src = go_build_base()
-        .run(shlex(
+        .run(Exec::shlex(
             "git clone https://github.com/moby/buildkit.git /go/src/github.com/moby/buildkit",
         ))
         .dir("/go/src/github.com/moby/buildkit");
 
-    let buildkitd_oci_worker_only = src.run(shlex(
+    let buildkitd_oci_worker_only = src.run(Exec::shlex(
         "go build -o /bin/buildkitd.oci_only -tags no_containerd_worker ./cmd/buildkitd",
     ));
 

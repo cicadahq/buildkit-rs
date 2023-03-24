@@ -14,6 +14,9 @@ macro_rules! platform {
             variant: Cow::Borrowed($variant),
         };
     };
+    ($name:ident, $val:expr) => {
+        pub const $name: Platform = $val;
+    };
 }
 
 platform!(LINUX_AMD64, "linux", "amd64", "");

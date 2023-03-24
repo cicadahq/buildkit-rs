@@ -47,7 +47,6 @@ It is a similar project, but it is not maintained anymore and it is not compatib
 
 The Go client is a great library, but it is not easy to use in Rust. A native Rust client library is much easier to use and it is much faster for our use case. We are all in on Rust but still want to leverage the buildkit ecosystem.
 
-
 ## License
 
 Apache-2.0 OR MIT
