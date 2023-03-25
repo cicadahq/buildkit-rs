@@ -1,13 +1,7 @@
 pub mod exec;
-pub mod image;
+mod op_metadata;
 pub mod platform;
-pub mod state;
 mod serialize;
-mod sourcemap;
 mod source;
-mod metadata;
-mod cap;
-use std::collections::HashMap;
-
-use buildkit_rs_proto::pb;
-
+mod sourcemap;
+pub mod state;

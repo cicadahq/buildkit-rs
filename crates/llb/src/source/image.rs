@@ -2,17 +2,20 @@ use std::collections::HashMap;
 
 use buildkit_rs_proto::pb;
 
-use crate::serialize::{
-    id::OperationId,
-    node::{Context, Node, Operation},
+use crate::{
+    op_metadata::{attr::Attr, OpMetadata, OpMetadataBuilder},
+    serialize::{
+        id::OperationId,
+        node::{Context, Node, Operation},
+    },
 };
 
 #[derive(Debug, Clone)]
-struct Image {
+pub struct Image {
     id: OperationId,
+    metadata: OpMetadata,
+
     name: String,
-    description: HashMap<String, String>,
-    ignore_cache: bool,
 
     exclude: Vec<String>,
     include: Vec<String>,
@@ -20,17 +23,22 @@ struct Image {
 
 impl Image {
     pub fn new(name: String) -> Self {
+        // TODO: parse the name properly
         Self {
-            name,
             id: OperationId::new(),
-            description: HashMap::default(),
-            ignore_cache: false,
-            exclude: vec![],
-            include: vec![],
+            name,
+            metadata: OpMetadata::new(),
+            exclude: Vec::new(),
+            include: Vec::new(),
         }
     }
 
-    pub fn include<I, S>(mut self, include: I) -> Self
+    pub fn with_name(mut self, name: String) -> Self {
+        self.name = name;
+        self
+    }
+
+    pub fn with_include<I, S>(mut self, include: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -39,7 +47,7 @@ impl Image {
         self
     }
 
-    pub fn exclude<I, S>(mut self, exclude: I) -> Self
+    pub fn with_exclude<I, S>(mut self, exclude: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -59,14 +67,14 @@ impl Operation for Image {
 
         if !self.exclude.is_empty() {
             attrs.insert(
-                "local.excludepatterns".into(),
+                Attr::EXCLUDE_PATTERNS.into(),
                 serde_json::to_string(&self.exclude).unwrap(),
             );
         }
 
         if !self.include.is_empty() {
             attrs.insert(
-                "local.includepattern".into(),
+                Attr::INCLUDE_PATTERNS.into(),
                 serde_json::to_string(&self.include).unwrap(),
             );
         }
@@ -79,11 +87,17 @@ impl Operation for Image {
                 })),
                 ..Default::default()
             },
-            pb::OpMetadata {
-                description: self.description.clone(),
-                ignore_cache: self.ignore_cache,
-                ..Default::default()
-            },
+            self.metadata.clone().into(),
         ))
+    }
+}
+
+impl OpMetadataBuilder for Image {
+    fn metadata(&self) -> &OpMetadata {
+        &self.metadata
+    }
+
+    fn metadata_mut(&mut self) -> &mut OpMetadata {
+        &mut self.metadata
     }
 }
