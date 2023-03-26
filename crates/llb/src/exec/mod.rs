@@ -31,13 +31,12 @@ impl Exec {
 
     pub fn shlex(input: impl AsRef<str>) -> Self {
         let args = shlex::Shlex::new(input.as_ref()).into_iter().collect();
-    
+
         Self {
             context: Some(ExecContext::new(args)),
         }
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct ExecContext {
@@ -77,5 +76,3 @@ impl ExecContext {
         self
     }
 }
-
-

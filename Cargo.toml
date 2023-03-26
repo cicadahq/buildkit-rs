@@ -8,9 +8,11 @@ homepage.workspace = true
 license.workspace = true
 
 [dependencies]
-buildkit-rs-llb = { path = "crates/llb", package = "buildkit-rs-llb" }
-buildkit-rs-proto = { path = "crates/proto", package = "buildkit-rs-proto" }
-buildkit-rs-util = { path = "crates/util", package = "buildkit-rs-util" }
+buildkit-rs-frontend = { path = "crates/frontend" }
+buildkit-rs-llb = { path = "crates/llb" }
+buildkit-rs-proto = { path = "crates/proto" }
+buildkit-rs-reference = { path = "crates/reference" }
+buildkit-rs-util = { path = "crates/util" }
 
 [workspace]
 resolver = "2"

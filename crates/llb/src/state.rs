@@ -13,18 +13,18 @@ type State struct {
 /*
 keys
 
-	keyArgs         = contextKeyT("llb.exec.args")
-	keyDir          = contextKeyT("llb.exec.dir")
-	keyEnv          = contextKeyT("llb.exec.env")
-	keyExtraHost    = contextKeyT("llb.exec.extrahost")
-	keyHostname     = contextKeyT("llb.exec.hostname")
-	keyUlimit       = contextKeyT("llb.exec.ulimit")
-	keyCgroupParent = contextKeyT("llb.exec.cgroup.parent")
-	keyUser         = contextKeyT("llb.exec.user")
+    keyArgs         = contextKeyT("llb.exec.args")
+    keyDir          = contextKeyT("llb.exec.dir")
+    keyEnv          = contextKeyT("llb.exec.env")
+    keyExtraHost    = contextKeyT("llb.exec.extrahost")
+    keyHostname     = contextKeyT("llb.exec.hostname")
+    keyUlimit       = contextKeyT("llb.exec.ulimit")
+    keyCgroupParent = contextKeyT("llb.exec.cgroup.parent")
+    keyUser         = contextKeyT("llb.exec.user")
 
-	keyPlatform = contextKeyT("llb.platform")
-	keyNetwork  = contextKeyT("llb.network")
-	keySecurity = contextKeyT("llb.security")
+    keyPlatform = contextKeyT("llb.platform")
+    keyNetwork  = contextKeyT("llb.network")
+    keySecurity = contextKeyT("llb.security")
  */
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -78,7 +78,6 @@ impl std::fmt::Display for ContextKey {
     }
 }
 
-
 pub fn configure_dir(state: State, dir: String) -> State {
     state
 }
@@ -92,6 +91,4 @@ pub struct State {
     // async: Option<AsyncState>,
 }
 
-impl State {
-    
-}
+impl State {}

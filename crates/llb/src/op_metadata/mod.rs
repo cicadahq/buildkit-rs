@@ -1,5 +1,5 @@
 pub mod attr;
-mod cap;
+pub mod cap;
 
 use std::collections::HashMap;
 

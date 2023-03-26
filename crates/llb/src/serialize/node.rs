@@ -46,7 +46,7 @@ pub(crate) struct Node {
     pub bytes: Vec<u8>,
     pub digest: String,
     pub metadata: pb::OpMetadata,
-    pub source_location: Option<SourceLocation>
+    pub source_location: Option<SourceLocation>,
 }
 
 impl Node {
@@ -58,7 +58,7 @@ impl Node {
             digest: Self::digest(&bytes),
             bytes,
             metadata,
-            source_location: None
+            source_location: None,
         }
     }
 
