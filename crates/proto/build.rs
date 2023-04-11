@@ -1,7 +1,7 @@
 use std::io::Result;
 
-const VENDOR_DIR: &str = "../../vendor";
-const BUILDKIT_DIR: &str = "../../vendor/github.com/moby/buildkit";
+const VENDOR_DIR: &str = "vendor";
+const BUILDKIT_DIR: &str = "vendor/github.com/moby/buildkit";
 
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");

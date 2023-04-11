@@ -72,4 +72,4 @@ open an issue or a PR as soon as possible so we can discuss it and ensure it
 fits the goals of the project + we can avoid duplicate work.
 
 We also are welcome to discuss the project in the
-[Cicada Discord](https://discord.gg/xxxxxx) in the `#buildkit-rs` channel.
+[Cicada Discord](https://cicada.build/discord) in the `#buildkit-rs` channel.
