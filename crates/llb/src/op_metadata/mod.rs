@@ -52,7 +52,7 @@ pub trait OpMetadataBuilder: Sized {
         self
     }
 
-    fn set_description(mut self, attr: Attr, value: impl AsRef<str>) -> Self {
+    fn with_description(mut self, attr: Attr, value: impl AsRef<str>) -> Self {
         self.metadata_mut()
             .description
             .insert(attr, value.as_ref().to_owned());
@@ -64,7 +64,7 @@ pub trait OpMetadataBuilder: Sized {
         self
     }
 
-    fn set_custom_name(self, name: impl AsRef<str>) -> Self {
-        self.set_description(Attr::CUSTOM_NAME, name)
+    fn with_custom_name(self, name: impl AsRef<str>) -> Self {
+        self.with_description(Attr::CUSTOM_NAME, name)
     }
 }

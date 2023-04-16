@@ -1,1 +1,1 @@
-mod image;
+pub(crate) mod image;

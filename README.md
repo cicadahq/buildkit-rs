@@ -65,6 +65,8 @@ case. We are all in on Rust but still want to leverage the buildkit ecosystem.
 All contributions are licensed under either Apache-2.0 OR MIT. If you contribute
 any code you agree to license it under the same terms as the project.
 
+Any files in [`crates/proto/vendor`](/crates/proto/vendor/) under their original license.
+
 ## Contributing
 
 Any contributions are welcome! If you are interested in contributing, please

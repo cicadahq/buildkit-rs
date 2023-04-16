@@ -1,7 +1,10 @@
-pub mod exec;
-pub mod op_metadata;
-pub mod platform;
+mod exec;
+mod op_metadata;
+mod platform;
 mod serialize;
 mod source;
 mod sourcemap;
-pub mod state;
+mod state;
+
+pub use source::image::Image;
+pub use op_metadata::OpMetadataBuilder;

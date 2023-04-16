@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use buildkit_rs_proto::pb;
+use buildkit_rs_proto::pb::{self, op::Op as OpEnum, Op};
+use buildkit_rs_reference::Reference;
 
 use crate::{
     op_metadata::{attr::Attr, OpMetadata, OpMetadataBuilder},
@@ -22,12 +23,15 @@ pub struct Image {
 }
 
 impl Image {
-    pub fn new(name: String) -> Self {
-        // TODO: parse the name properly
+    pub fn new(name: impl AsRef<str>) -> Self {
+        let normalized_name = Reference::parse_normalized_named(name.as_ref())
+            .expect("failed to parse image name")
+            .to_string();
+
         Self {
             id: OperationId::new(),
-            name,
             metadata: OpMetadata::new(),
+            name: normalized_name,
             exclude: Vec::new(),
             include: Vec::new(),
         }
@@ -80,11 +84,12 @@ impl Operation for Image {
         }
 
         Some(Node::new(
-            pb::Op {
-                op: Some(pb::op::Op::Source(pb::SourceOp {
+            Op {
+                op: Some(OpEnum::Source(pb::SourceOp {
                     identifier: self.name.clone(),
                     attrs,
                 })),
+
                 ..Default::default()
             },
             self.metadata.clone().into(),
