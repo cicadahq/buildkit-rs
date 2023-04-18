@@ -6,8 +6,9 @@ use camino::Utf8PathBuf;
 
 use crate::utils::{OperationOutput, OutputIdx};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CacheSharingMode {
+    #[default]
     Shared,
     Private,
     Locked,
@@ -92,6 +93,40 @@ impl Mount<'_> {
             mount_type: MountType::Layer {
                 input,
                 output: None,
+            },
+        }
+    }
+
+    pub fn cache(
+        dest: impl Into<Utf8PathBuf>,
+        id: impl Into<String>,
+        sharing: CacheSharingMode,
+    ) -> Mount<'static> {
+        Mount {
+            dest: dest.into(),
+            mount_type: MountType::Cache {
+                id: id.into(),
+                sharing,
+            },
+        }
+    }
+
+    pub fn secret(
+        dest: impl Into<Utf8PathBuf>,
+        id: impl Into<String>,
+        uid: u32,
+        gid: u32,
+        mode: u32,
+        optional: bool,
+    ) -> Mount<'static> {
+        Mount {
+            dest: dest.into(),
+            mount_type: MountType::Secret {
+                id: id.into(),
+                uid,
+                gid,
+                mode,
+                optional,
             },
         }
     }
