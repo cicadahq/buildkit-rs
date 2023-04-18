@@ -1,14 +1,17 @@
 use std::{collections::HashMap, sync::Arc};
 
 use buildkit_rs_proto::pb::{self, op::Op as OpEnum, Op};
-use buildkit_rs_reference::Reference;
 
 use crate::{
-    ops::{metadata::{attr::Attr, OpMetadata, OpMetadataBuilder}, output::{SingleBorrowedOutput, SingleOwnedOutput}},
+    ops::{
+        metadata::{attr::Attr, OpMetadata, OpMetadataBuilder},
+        output::{SingleBorrowedOutput, SingleOwnedOutput},
+    },
     serialize::{
         id::OperationId,
         node::{Context, Node, Operation},
-    }, utils::{OutputIdx, OperationOutput},
+    },
+    utils::{OperationOutput, OutputIdx},
 };
 
 #[derive(Debug, Clone)]
@@ -112,7 +115,6 @@ impl OpMetadataBuilder for Local {
         &mut self.metadata
     }
 }
-
 
 impl<'a> SingleBorrowedOutput<'a> for Local {
     fn output(&'a self) -> OperationOutput<'a> {

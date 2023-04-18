@@ -210,8 +210,8 @@ fn name_pat() -> String {
 fn reference_pat() -> String {
     anchored!(
         &capture(&name_pat()),
-        &optional!(":", &capture(&TAG)),
-        &optional!("@", &capture(&DIGEST_PAT))
+        &optional!(":", &capture(TAG)),
+        &optional!("@", &capture(DIGEST_PAT))
     )
 }
 

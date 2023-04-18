@@ -35,7 +35,7 @@ impl<'a> OperationOutput<'a> {
     pub(crate) fn operation(&self) -> &dyn Operation {
         match self.kind {
             OperationOutputKind::Owned(ref op, ..) => op.as_ref(),
-            OperationOutputKind::Borrowed(ref op, ..) => *op,
+            OperationOutputKind::Borrowed(op, ..) => op,
         }
     }
 
@@ -48,47 +48,47 @@ impl<'a> OperationOutput<'a> {
     }
 }
 
-impl Into<i64> for OutputIdx {
-    fn into(self) -> i64 {
-        self.0.into()
+impl From<OutputIdx> for i64 {
+    fn from(val: OutputIdx) -> Self {
+        val.0.into()
     }
 }
-impl Into<i64> for &OutputIdx {
-    fn into(self) -> i64 {
-        self.0.into()
-    }
-}
-
-impl Into<i64> for OwnOutputIdx {
-    fn into(self) -> i64 {
-        self.0.into()
-    }
-}
-impl Into<i64> for &OwnOutputIdx {
-    fn into(self) -> i64 {
-        self.0.into()
+impl From<&OutputIdx> for i64 {
+    fn from(val: &OutputIdx) -> Self {
+        val.0.into()
     }
 }
 
-impl Into<i32> for OutputIdx {
-    fn into(self) -> i32 {
-        self.0 as i32
+impl From<OwnOutputIdx> for i64 {
+    fn from(val: OwnOutputIdx) -> Self {
+        val.0.into()
     }
 }
-impl Into<i32> for &OutputIdx {
-    fn into(self) -> i32 {
-        self.0 as i32
+impl From<&OwnOutputIdx> for i64 {
+    fn from(val: &OwnOutputIdx) -> Self {
+        val.0.into()
     }
 }
 
-impl Into<i32> for OwnOutputIdx {
-    fn into(self) -> i32 {
-        self.0 as i32
+impl From<OutputIdx> for i32 {
+    fn from(val: OutputIdx) -> Self {
+        val.0 as i32
     }
 }
-impl Into<i32> for &OwnOutputIdx {
-    fn into(self) -> i32 {
-        self.0 as i32
+impl From<&OutputIdx> for i32 {
+    fn from(val: &OutputIdx) -> Self {
+        val.0 as i32
+    }
+}
+
+impl From<OwnOutputIdx> for i32 {
+    fn from(val: OwnOutputIdx) -> Self {
+        val.0 as i32
+    }
+}
+impl From<&OwnOutputIdx> for i32 {
+    fn from(val: &OwnOutputIdx) -> Self {
+        val.0 as i32
     }
 }
 
@@ -105,7 +105,7 @@ pub mod test {
         ($op:expr, $(|$name:ident| $value:expr,)*) => ($crate::check_op!($op, $(|$name| $value),*));
         ($op:expr, $(|$name:ident| $value:expr),*) => {{
             #[allow(unused_imports)]
-            use crate::serialization::{Context, Operation};
+            use $crate::serialization::{Context, Operation};
 
             let mut context = Context::default();
             let serialized = $op.serialize(&mut context).unwrap();
@@ -154,7 +154,7 @@ pub mod test {
                     .registered_nodes_iter()
                     .map(|node| node.digest.clone())
                     .collect::<Vec<_>>(),
-                crate::utils::test::to_vec($value),
+                $crate::utils::test::to_vec($value),
             );
         };
 

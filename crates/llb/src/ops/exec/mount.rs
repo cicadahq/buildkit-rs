@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use buildkit_rs_proto::pb::{
     CacheOpt, CacheSharingOpt, Mount as PbMount, MountType as PbMountType, SecretOpt, SshOpt,
     TmpfsOpt,

@@ -89,9 +89,9 @@ impl CapID {
     pub const SOURCE_POLICY: CapID = CapID::new("source.policy");
 }
 
-impl Into<String> for CapID {
-    fn into(self) -> String {
-        self.0.into_owned()
+impl From<CapID> for String {
+    fn from(val: CapID) -> Self {
+        val.0.into_owned()
     }
 }
 

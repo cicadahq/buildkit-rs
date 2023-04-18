@@ -4,11 +4,15 @@ use buildkit_rs_proto::pb::{self, op::Op as OpEnum, Op};
 use buildkit_rs_reference::Reference;
 
 use crate::{
-    ops::{metadata::{attr::Attr, OpMetadata, OpMetadataBuilder}, output::{SingleOwnedOutput, SingleBorrowedOutput}},
+    ops::{
+        metadata::{attr::Attr, OpMetadata, OpMetadataBuilder},
+        output::{SingleBorrowedOutput, SingleOwnedOutput},
+    },
     serialize::{
         id::OperationId,
         node::{Context, Node, Operation},
-    }, utils::{OutputIdx, OperationOutput},
+    },
+    utils::{OperationOutput, OutputIdx},
 };
 
 #[derive(Debug, Clone, Copy, Default)]

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use attr::Attr;
 use buildkit_rs_proto::pb;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct OpMetadata {
     pub ignore_cache: bool,
     pub description: HashMap<Attr, String>,
@@ -18,20 +18,11 @@ impl OpMetadata {
     }
 }
 
-impl Default for OpMetadata {
-    fn default() -> Self {
-        Self {
-            ignore_cache: false,
-            description: HashMap::new(),
-        }
-    }
-}
-
-impl Into<pb::OpMetadata> for OpMetadata {
-    fn into(self) -> pb::OpMetadata {
+impl From<OpMetadata> for pb::OpMetadata {
+    fn from(val: OpMetadata) -> Self {
         pb::OpMetadata {
-            ignore_cache: self.ignore_cache,
-            description: self
+            ignore_cache: val.ignore_cache,
+            description: val
                 .description
                 .into_iter()
                 .map(|(k, v)| (k.into(), v))

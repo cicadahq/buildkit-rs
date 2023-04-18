@@ -91,7 +91,7 @@ impl Reference {
         // and makes a 60Mb allocationthis was copied from the original go code, but we can do better :)
         let matches = REFERENCE_REGEX.captures(s);
         let Some(matches) = matches else {
-            if s == "" {
+            if s.is_empty() {
                 return Err(Error::NameEmpty);
             }
             if REFERENCE_REGEX.captures(&s.to_lowercase()).is_some() {
@@ -107,7 +107,7 @@ impl Reference {
         let name_match = ANCHORED_NAME_REGEXP.captures(
             matches
                 .get(1)
-                .ok_or_else(|| Error::InvalidReferenceFormat)?
+                .ok_or(Error::InvalidReferenceFormat)?
                 .as_str(),
         );
         let Some(name_match) = name_match else {
@@ -121,7 +121,7 @@ impl Reference {
             },
             None => Repository {
                 domain: None,
-                path: name_match.get(2).map(|m| m.as_str().into()).into(),
+                path: name_match.get(2).map(|m| m.as_str().into()),
             },
         };
 
@@ -154,7 +154,7 @@ impl Reference {
             return Err(Error::NameContainsUppercase);
         }
 
-        Self::parse(&format!("{domain}/{remainder}"))
+        Self::parse(format!("{domain}/{remainder}"))
     }
 
     /// Returns the domain of the reference, or the default domain (`docker.io`) if it is not set

@@ -3,7 +3,6 @@ pub mod node;
 
 use buildkit_rs_proto::pb;
 use prost::Message;
-use std::collections::HashMap;
 
 use crate::utils::OperationOutput;
 

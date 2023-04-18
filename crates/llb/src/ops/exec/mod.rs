@@ -1,8 +1,6 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
-use buildkit_rs_proto::pb::{
-    self, op::Op as OpEnum, ExecOp, Meta, NetMode, Op, SecretEnv, SecurityMode,
-};
+use buildkit_rs_proto::pb::{self, op::Op as OpEnum, ExecOp, Meta, NetMode, Op, SecurityMode};
 
 use crate::{
     serialize::{
@@ -10,7 +8,7 @@ use crate::{
         node::{Context, Node, Operation},
     },
     utils::{OperationOutput, OutputIdx},
-    MultiBorrowedOutput, OpMetadataBuilder, MultiOwnedOutput,
+    MultiBorrowedOutput, MultiOwnedOutput, OpMetadataBuilder,
 };
 
 use super::metadata::OpMetadata;
@@ -57,7 +55,7 @@ impl Exec<'static> {
     }
 
     pub fn shlex(input: impl AsRef<str>) -> Self {
-        let args = shlex::Shlex::new(input.as_ref()).into_iter().collect();
+        let args = shlex::Shlex::new(input.as_ref()).collect();
 
         Self {
             context: Some(ExecContext::new(args)),
@@ -77,8 +75,8 @@ impl<'a> Exec<'a> {
 pub struct ExecContext {
     pub args: Vec<String>,
     pub env: Vec<String>,
-    pub cwd: String,
-    pub user: String,
+    pub cwd: Cow<'static, str>,
+    pub user: Cow<'static, str>,
 }
 
 impl ExecContext {
@@ -102,12 +100,12 @@ impl ExecContext {
     }
 
     pub fn with_cwd(mut self, cwd: String) -> Self {
-        self.cwd = cwd;
+        self.cwd = cwd.into();
         self
     }
 
     pub fn with_user(mut self, user: String) -> Self {
-        self.user = user;
+        self.user = user.into();
         self
     }
 }
@@ -146,8 +144,8 @@ impl Operation for Exec<'_> {
             let mut meta = Meta::default();
             meta.args = ctx.args.clone();
             meta.env = ctx.env.clone();
-            meta.cwd = ctx.cwd.clone();
-            meta.user = ctx.user.clone();
+            meta.cwd = ctx.cwd.clone().into_owned();
+            meta.user = ctx.user.clone().into_owned();
             meta
         });
 

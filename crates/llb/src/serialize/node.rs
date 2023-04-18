@@ -47,7 +47,7 @@ impl Context {
 
 fn digest(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
-    hasher.update(&bytes);
+    hasher.update(bytes);
     let digest_bytes = hasher.finalize();
     format!("sha256:{digest_bytes:x}")
 }
@@ -83,6 +83,9 @@ mod tests {
         let bytes = b"hello world";
         let digest = digest(bytes);
 
-        assert_eq!(digest, "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+        assert_eq!(
+            digest,
+            "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        );
     }
 }

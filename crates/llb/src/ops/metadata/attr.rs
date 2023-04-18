@@ -59,9 +59,9 @@ impl Attr {
     pub const IMAGE_LAYER_LIMIT: Attr = Attr::new("image.layerlimit");
 }
 
-impl Into<String> for Attr {
-    fn into(self) -> String {
-        self.0.into_owned()
+impl From<Attr> for String {
+    fn from(val: Attr) -> Self {
+        val.0.into_owned()
     }
 }
 
