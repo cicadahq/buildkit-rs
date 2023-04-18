@@ -69,6 +69,16 @@ impl<'a> Exec<'a> {
         self.mounts.push(mount);
         self
     }
+
+    pub fn with_env(mut self, env: Vec<String>) -> Self {
+        self.context = Some(self.context.unwrap().with_env(env));
+        self
+    }
+
+    pub fn with_cwd(mut self, cwd: String) -> Self {
+        self.context = Some(self.context.unwrap().with_cwd(cwd));
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -121,12 +131,13 @@ impl Operation for Exec<'_> {
 
         let mut input_index = 0;
         for mount in &self.mounts {
-            let input_index = if let Some(output) = mount.input() {
+            let input_index = if let Some(input) = mount.input() {
                 let current_index = input_index;
-                let node = ctx.register(output.operation()).unwrap();
+                let node = ctx.register(input.operation()).unwrap();
+
                 inputs.push(pb::Input {
                     digest: node.digest.clone(),
-                    index: current_index,
+                    index: input.output().into(),
                     ..Default::default()
                 });
 

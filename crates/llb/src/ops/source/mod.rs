@@ -1,2 +1,2 @@
 pub(crate) mod image;
-mod local;
+pub(crate) mod local;
