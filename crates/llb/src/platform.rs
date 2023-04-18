@@ -1,17 +1,17 @@
 use std::{borrow::Cow, fmt};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Platform<'a> {
+pub struct Platform {
     /// The architecture of the platform
-    pub architecture: Cow<'a, str>,
+    pub architecture: Cow<'static, str>,
     /// The name of the operating system
-    pub os: Cow<'a, str>,
+    pub os: Cow<'static, str>,
     /// The variant of the architecture
-    pub variant: Option<Cow<'a, str>>,
+    pub variant: Option<Cow<'static, str>>,
 }
 
-impl<'a> Platform<'a> {
-    pub const fn new(os: &'a str, arch: &'a str, variant: Option<&'a str>) -> Self {
+impl Platform {
+    pub const fn new(os: &'static str, arch: &'static str, variant: Option<&'static str>) -> Self {
         Self {
             architecture: Cow::Borrowed(arch),
             os: Cow::Borrowed(os),
@@ -23,38 +23,50 @@ impl<'a> Platform<'a> {
             },
         }
     }
+
+    pub const LINUX_AMD64: Platform = Platform::new("linux", "amd64", None);
+    pub const LINUX_ARMHF: Platform = Platform::new("linux", "arm", Some("v7"));
+    pub const LINUX_ARM: Platform = Platform::new("linux", "arm", Some("v7"));
+    pub const LINUX_ARMEL: Platform = Platform::new("linux", "arm", Some("v6"));
+    pub const LINUX_ARM64: Platform = Platform::new("linux", "arm64", None);
+    pub const LINUX_S390X: Platform = Platform::new("linux", "s390x", None);
+    pub const LINUX_PPC64: Platform = Platform::new("linux", "ppc64", None);
+    pub const LINUX_PPC64LE: Platform = Platform::new("linux", "ppc64le", None);
+    pub const DARWIN: Platform = Platform::new("darwin", "amd64", None);
+    pub const WINDOWS: Platform = Platform::new("windows", "amd64", None);
 }
 
-impl Platform<'_> {
-    pub fn into_static(self) -> Platform<'static> {
-        Platform {
-            architecture: Cow::Owned(self.architecture.into_owned()),
-            os: Cow::Owned(self.os.into_owned()),
-            variant: match self.variant {
-                Some(variant) => Some(Cow::Owned(variant.into_owned())),
-                None => None,
-            },
-        }
-    }
-}
-
-impl fmt::Display for Platform<'_> {
+impl fmt::Display for Platform {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}-{}", self.os, self.architecture)?;
-        if let Some(variant) = &self.variant {
-            write!(f, "-{}", variant)?;
+        let Platform {
+            architecture,
+            os,
+            variant,
+        } = self;
+
+        write!(f, "{os}-{architecture}")?;
+        if let Some(variant) = variant {
+            write!(f, "-{variant}")?;
         }
         Ok(())
     }
 }
 
-pub const LINUX_AMD64: Platform = Platform::new("linux", "amd64", None);
-pub const LINUX_ARMHF: Platform = Platform::new("linux", "arm", Some("v7"));
-pub const LINUX_ARM: Platform = LINUX_ARMHF; // ALIAS FOR LINUX_ARMHF
-pub const LINUX_ARMEL: Platform = Platform::new("linux", "arm", Some("v6"));
-pub const LINUX_ARM64: Platform = Platform::new("linux", "arm64", None);
-pub const LINUX_S390X: Platform = Platform::new("linux", "s390x", None);
-pub const LINUX_PPC64: Platform = Platform::new("linux", "ppc64", None);
-pub const LINUX_PPC64LE: Platform = Platform::new("linux", "ppc64le", None);
-pub const DARWIN: Platform = Platform::new("darwin", "amd64", None);
-pub const WINDOWS: Platform = Platform::new("windows", "amd64", None);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn platform_display() {
+        assert_eq!(Platform::LINUX_AMD64.to_string(), "linux-amd64");
+        assert_eq!(Platform::LINUX_ARMHF.to_string(), "linux-arm-v7");
+        assert_eq!(Platform::LINUX_ARM.to_string(), "linux-arm-v7");
+        assert_eq!(Platform::LINUX_ARMEL.to_string(), "linux-arm-v6");
+        assert_eq!(Platform::LINUX_ARM64.to_string(), "linux-arm64");
+        assert_eq!(Platform::LINUX_S390X.to_string(), "linux-s390x");
+        assert_eq!(Platform::LINUX_PPC64.to_string(), "linux-ppc64");
+        assert_eq!(Platform::LINUX_PPC64LE.to_string(), "linux-ppc64le");
+        assert_eq!(Platform::DARWIN.to_string(), "darwin-amd64");
+        assert_eq!(Platform::WINDOWS.to_string(), "windows-amd64");
+    }
+}

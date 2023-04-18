@@ -23,6 +23,15 @@ This is a Rust client library for buildkit.
 - [buildkit-rs-dockerfile](/) - A library for parsing and converting Dockerfiles
   to LLB (this is mostly for validation and testing, not for production use)
 
+
+## Testing
+
+```shell
+docker run -d --name buildkitd --privileged moby/buildkit:latest 
+export BUILDKIT_HOST=docker-container://buildkitd
+cargo run --example test --package buildkit-rs-llb | buildctl b --progress plain --no-cache
+```
+
 ## QA
 
 ### What are the goals of this project?

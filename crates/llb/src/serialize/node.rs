@@ -19,6 +19,10 @@ pub struct Context {
 }
 
 impl Context {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
     #[allow(clippy::map_entry)]
     pub(crate) fn register<'a>(&'a mut self, op: &dyn Operation) -> Option<&'a Node> {
         let id = **op.id();
@@ -41,6 +45,13 @@ impl Context {
     }
 }
 
+fn digest(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(&bytes);
+    let digest_bytes = hasher.finalize();
+    format!("sha256:{digest_bytes:x}")
+}
+
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Node {
     pub bytes: Vec<u8>,
@@ -55,17 +66,23 @@ impl Node {
         message.encode(&mut bytes).unwrap();
 
         Self {
-            digest: Self::digest(&bytes),
+            digest: digest(&bytes),
             bytes,
             metadata,
             source_location: None,
         }
     }
+}
 
-    pub fn digest(bytes: &[u8]) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(&bytes);
-        let digest_bytes = hasher.finalize();
-        format!("sha256:{digest_bytes:x}")
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_digest() {
+        let bytes = b"hello world";
+        let digest = digest(bytes);
+
+        assert_eq!(digest, "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
     }
 }

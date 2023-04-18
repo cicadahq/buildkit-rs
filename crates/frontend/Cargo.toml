@@ -6,6 +6,7 @@ edition.workspace = true
 authors.workspace = true
 homepage.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
 tonic = "0.9.1"

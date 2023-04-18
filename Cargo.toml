@@ -24,3 +24,4 @@ edition = "2021"
 authors = ["Grant Gurvis", "cicada.build"]
 homepage = "https://cicada.build"
 license = "Apache-2.0 OR MIT"
+repository = "http://github.com/cicadahq/buildkit-rs"

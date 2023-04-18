@@ -1,16 +1,21 @@
+use std::sync::Arc;
+
 use buildkit_rs_proto::pb::{
     self, op::Op as OpEnum, ExecOp, Meta, NetMode, Op, SecretEnv, SecurityMode,
 };
 
 use crate::{
-    op_metadata::OpMetadata,
     serialize::{
         id::OperationId,
         node::{Context, Node, Operation},
     },
+    utils::{OperationOutput, OutputIdx},
+    MultiBorrowedOutput, OpMetadataBuilder, MultiOwnedOutput,
 };
 
-mod mount;
+use super::metadata::OpMetadata;
+
+pub mod mount;
 
 /*
 type ExecOp struct {
@@ -26,13 +31,13 @@ type ExecOp struct {
 */
 
 #[derive(Debug, Clone)]
-pub struct Exec {
+pub struct Exec<'a> {
     pub(crate) id: OperationId,
     pub(crate) metadata: OpMetadata,
 
     // pub proxy_env: Option<ProxyEnv>,
     pub context: Option<ExecContext>,
-    pub mounts: Vec<mount::Mount>,
+    pub mounts: Vec<mount::Mount<'a>>,
     // pub base: Option<State>,
     // pub constraints: Constraints,
     // pub is_validated: bool,
@@ -40,7 +45,7 @@ pub struct Exec {
     // pub ssh: Vec<SSHInfo>,
 }
 
-impl Exec {
+impl Exec<'static> {
     pub fn new() -> Self {
         Self {
             id: OperationId::new(),
@@ -58,6 +63,13 @@ impl Exec {
             context: Some(ExecContext::new(args)),
             ..Self::new()
         }
+    }
+}
+
+impl<'a> Exec<'a> {
+    pub fn with_mount(mut self, mount: mount::Mount<'a>) -> Self {
+        self.mounts.push(mount);
+        self
     }
 }
 
@@ -100,12 +112,36 @@ impl ExecContext {
     }
 }
 
-impl Operation for Exec {
+impl Operation for Exec<'_> {
     fn id(&self) -> &OperationId {
         &self.id
     }
 
-    fn serialize(&self, cx: &mut Context) -> Option<Node> {
+    fn serialize(&self, ctx: &mut Context) -> Option<Node> {
+        let mut mounts: Vec<pb::Mount> = vec![];
+        let mut inputs: Vec<pb::Input> = vec![];
+
+        let mut input_index = 0;
+        for mount in &self.mounts {
+            let input_index = if let Some(output) = mount.input() {
+                let current_index = input_index;
+                let node = ctx.register(output.operation()).unwrap();
+                inputs.push(pb::Input {
+                    digest: node.digest.clone(),
+                    index: current_index,
+                    ..Default::default()
+                });
+
+                input_index += 1;
+
+                current_index
+            } else {
+                -1
+            };
+
+            mounts.push(mount.to_pb(input_index));
+        }
+
         let meta = self.context.as_ref().map(|ctx| {
             let mut meta = Meta::default();
             meta.args = ctx.args.clone();
@@ -117,8 +153,8 @@ impl Operation for Exec {
 
         let exec_op = ExecOp {
             meta,
-            mounts: vec![],
-            network: NetMode::None.into(),
+            mounts,
+            network: NetMode::Unset.into(),
             security: SecurityMode::Sandbox.into(),
             secretenv: vec![],
         };
@@ -126,9 +162,34 @@ impl Operation for Exec {
         Some(Node::new(
             Op {
                 op: Some(OpEnum::Exec(exec_op)),
+                inputs,
                 ..Default::default()
             },
             self.metadata.clone().into(),
         ))
+    }
+}
+
+impl OpMetadataBuilder for Exec<'_> {
+    fn metadata(&self) -> &OpMetadata {
+        &self.metadata
+    }
+
+    fn metadata_mut(&mut self) -> &mut OpMetadata {
+        &mut self.metadata
+    }
+}
+
+impl<'a, 'b: 'a> MultiBorrowedOutput<'b> for Exec<'b> {
+    fn output(&'b self, index: u32) -> OperationOutput<'b> {
+        // TODO: check if the requested index available.
+        OperationOutput::borrowed(self, OutputIdx(index))
+    }
+}
+
+impl<'a> MultiOwnedOutput<'a> for Arc<Exec<'a>> {
+    fn output(&self, index: u32) -> OperationOutput<'a> {
+        // TODO: check if the requested index available.
+        OperationOutput::owned(self.clone(), OutputIdx(index))
     }
 }

@@ -1,18 +1,18 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use buildkit_rs_proto::pb::{self, op::Op as OpEnum, Op};
 use buildkit_rs_reference::Reference;
 
 use crate::{
-    op_metadata::{attr::Attr, OpMetadata, OpMetadataBuilder},
+    ops::{metadata::{attr::Attr, OpMetadata, OpMetadataBuilder}, output::{SingleBorrowedOutput, SingleOwnedOutput}},
     serialize::{
         id::OperationId,
         node::{Context, Node, Operation},
-    },
+    }, utils::{OutputIdx, OperationOutput},
 };
 
 #[derive(Debug, Clone)]
-pub struct Image {
+pub struct Local {
     id: OperationId,
     metadata: OpMetadata,
 
@@ -22,16 +22,12 @@ pub struct Image {
     include: Vec<String>,
 }
 
-impl Image {
-    pub fn new(name: impl AsRef<str>) -> Self {
-        let normalized_name = Reference::parse_normalized_named(name.as_ref())
-            .expect("failed to parse image name")
-            .to_string();
-
+impl Local {
+    pub fn new(name: String) -> Self {
         Self {
             id: OperationId::new(),
             metadata: OpMetadata::new(),
-            name: normalized_name,
+            name,
             exclude: Vec::new(),
             include: Vec::new(),
         }
@@ -42,7 +38,7 @@ impl Image {
         self
     }
 
-    pub fn with_include<I, S>(mut self, include: I) -> Self
+    pub fn with_includes<I, S>(mut self, include: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -51,7 +47,12 @@ impl Image {
         self
     }
 
-    pub fn with_exclude<I, S>(mut self, exclude: I) -> Self
+    pub fn with_include(mut self, include: impl AsRef<str>) -> Self {
+        self.include.push(include.as_ref().into());
+        self
+    }
+
+    pub fn with_excludes<I, S>(mut self, exclude: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -59,14 +60,19 @@ impl Image {
         self.exclude = exclude.into_iter().map(|s| s.as_ref().into()).collect();
         self
     }
+
+    pub fn with_exclude(mut self, exclude: impl AsRef<str>) -> Self {
+        self.exclude.push(exclude.as_ref().into());
+        self
+    }
 }
 
-impl Operation for Image {
+impl Operation for Local {
     fn id(&self) -> &OperationId {
         &self.id
     }
 
-    fn serialize(&self, cx: &mut Context) -> Option<Node> {
+    fn serialize(&self, _: &mut Context) -> Option<Node> {
         let mut attrs = HashMap::default();
 
         if !self.exclude.is_empty() {
@@ -86,7 +92,7 @@ impl Operation for Image {
         Some(Node::new(
             Op {
                 op: Some(OpEnum::Source(pb::SourceOp {
-                    identifier: self.name.clone(),
+                    identifier: format!("local://{}", self.name),
                     attrs,
                 })),
 
@@ -97,12 +103,25 @@ impl Operation for Image {
     }
 }
 
-impl OpMetadataBuilder for Image {
+impl OpMetadataBuilder for Local {
     fn metadata(&self) -> &OpMetadata {
         &self.metadata
     }
 
     fn metadata_mut(&mut self) -> &mut OpMetadata {
         &mut self.metadata
+    }
+}
+
+
+impl<'a> SingleBorrowedOutput<'a> for Local {
+    fn output(&'a self) -> OperationOutput<'a> {
+        OperationOutput::borrowed(self, OutputIdx(0))
+    }
+}
+
+impl<'a> SingleOwnedOutput<'static> for Arc<Local> {
+    fn output(&self) -> OperationOutput<'static> {
+        OperationOutput::owned(self.clone(), OutputIdx(0))
     }
 }
