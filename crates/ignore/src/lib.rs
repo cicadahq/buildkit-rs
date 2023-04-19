@@ -16,23 +16,14 @@ pub enum Error {
 /// to ignore. Note this will trim whitespace from each line as well
 /// as use Rust's `PathBuf` to get the cleanest path for each.
 ///
-/// Based on the implementation here: https://github.com/moby/buildkit/blob/1077362ebe0fc7e8f9c2634a49e07733a63ea1c9/frontend/dockerfile/dockerignore/dockerignore.go
+/// Based on the implementation here, we ignore the bom stripping however:
+/// https://github.com/moby/buildkit/blob/1077362ebe0fc7e8f9c2634a49e07733a63ea1c9/frontend/dockerfile/dockerignore/dockerignore.go
 pub fn read_ignore_to_list<R: Read>(reader: R) -> Result<Vec<String>, Error> {
     let mut excludes = Vec::new();
-
     let mut buf_reader = BufReader::new(reader);
-    let utf8_bom = [0xEF, 0xBB, 0xBF];
-    let mut current_line = 0;
-
     let mut line = String::new();
+
     while buf_reader.read_line(&mut line)? > 0 {
-        // We trim utf8 bom from the first line
-        if current_line == 0 {
-            line = line
-                .trim_start_matches(|c: char| utf8_bom.contains(&(c as u8)))
-                .to_string();
-        }
-        current_line += 1;
         // Lines starting with # (comments) are ignored before processing
         if line.starts_with('#') {
             line.clear();
@@ -69,4 +60,40 @@ pub fn read_ignore_to_list<R: Read>(reader: R) -> Result<Vec<String>, Error> {
     }
 
     Ok(excludes)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use super::*;
+
+    #[test]
+    fn test_empty_reader() {
+        let input = "";
+        let reader = Cursor::new(input);
+        let result = read_ignore_to_list(reader).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_ignore_file() {
+        let input = r#"
+# This is a comment
+*.tmp
+
+file.txt
+    "#;
+        let reader = Cursor::new(input);
+        let result = read_ignore_to_list(reader).unwrap();
+        assert_eq!(result, vec!["*.tmp", "file.txt"]);
+    }
+
+    #[test]
+    fn test_ignore_with_inverted_pattern() {
+        let input = ["!file.txt", "*.tmp", "!./file.txt"].join("\n");
+        let reader = Cursor::new(input);
+        let result = read_ignore_to_list(reader).unwrap();
+        assert_eq!(result, vec!["!file.txt", "*.tmp", "!file.txt"]);
+    }
 }

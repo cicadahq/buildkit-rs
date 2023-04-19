@@ -18,6 +18,9 @@ pub mod google {
 pub mod moby {
     pub mod buildkit {
         pub mod v1 {
+            // this is api/services/control/control.proto
+            include!(concat!(env!("OUT_DIR"), "/moby.buildkit.v1.rs"));
+
             pub mod apicaps {
                 include!(concat!(env!("OUT_DIR"), "/moby.buildkit.v1.apicaps.rs"));
             }

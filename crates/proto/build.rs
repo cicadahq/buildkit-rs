@@ -6,7 +6,10 @@ const BUILDKIT_DIR: &str = "vendor/github.com/moby/buildkit";
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build.rs");
 
-    let protos = [format!("{BUILDKIT_DIR}/frontend/gateway/pb/gateway.proto")];
+    let protos = [
+        format!("{BUILDKIT_DIR}/frontend/gateway/pb/gateway.proto"),
+        format!("{BUILDKIT_DIR}/api/services/control/control.proto"),
+    ];
     let includes = [VENDOR_DIR.into(), format!("{BUILDKIT_DIR}/vendor")];
 
     tonic_build::configure()
