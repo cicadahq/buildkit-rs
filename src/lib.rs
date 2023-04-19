@@ -21,6 +21,11 @@ pub mod reference {
     pub use buildkit_rs_reference::*;
 }
 
+/// Ignore file parser
+pub mod ignore {
+    pub use buildkit_rs_ignore::*;
+}
+
 /// Other utilities
 pub mod util {
     pub use buildkit_rs_util::*;

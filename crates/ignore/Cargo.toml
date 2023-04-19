@@ -1,0 +1,13 @@
+[package]
+name = "buildkit-rs-ignore"
+description = "Parse .dockerignore and .containerignore files"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+path-clean = "1.0.1"
+thiserror = "1.0.40"

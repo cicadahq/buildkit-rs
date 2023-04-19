@@ -105,6 +105,7 @@ name = "buildkit-rs"
 version = "0.1.0"
 dependencies = [
  "buildkit-rs-frontend",
+ "buildkit-rs-ignore",
  "buildkit-rs-llb",
  "buildkit-rs-proto",
  "buildkit-rs-reference",
@@ -116,6 +117,14 @@ name = "buildkit-rs-frontend"
 version = "0.1.0"
 dependencies = [
  "tonic",
+]
+
+[[package]]
+name = "buildkit-rs-ignore"
+version = "0.1.0"
+dependencies = [
+ "path-clean",
+ "thiserror",
 ]
 
 [[package]]
@@ -536,6 +545,12 @@ name = "once_cell"
 version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7e5500299e16ebb147ae15a00a942af264cf3688f47923b8fc2cd5858f23ad3"
+
+[[package]]
+name = "path-clean"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
 
 [[package]]
 name = "percent-encoding"

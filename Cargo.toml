@@ -9,6 +9,7 @@ license.workspace = true
 
 [dependencies]
 buildkit-rs-frontend = { path = "crates/frontend" }
+buildkit-rs-ignore = { version = "0.1.0", path = "crates/ignore" }
 buildkit-rs-llb = { path = "crates/llb" }
 buildkit-rs-proto = { path = "crates/proto" }
 buildkit-rs-reference = { path = "crates/reference" }
