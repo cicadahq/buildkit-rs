@@ -72,9 +72,9 @@ impl Client {
             .map(Response::into_inner)
     }
 
-    pub async fn session(&mut self) -> Result<(), tonic::Status> {
-        self.0.session(Request::new(())).await.map(|_| ()
-    }
+    // pub async fn session(&mut self) -> Result<(), tonic::Status> {
+    //     self.0.session(Request::new(())).await.map(|_| ()
+    // }
 }
 
 trait BuildkitRequestBuilder<T> {

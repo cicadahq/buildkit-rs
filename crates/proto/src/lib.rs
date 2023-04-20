@@ -37,6 +37,12 @@ pub mod moby {
                 include!(concat!(env!("OUT_DIR"), "/moby.buildkit.v1.types.rs"));
             }
         }
+
+        pub mod secrets {
+            pub mod v1 {
+                include!(concat!(env!("OUT_DIR"), "/moby.buildkit.secrets.v1.rs"));
+            }
+        }
     }
 
     pub mod filesync {
