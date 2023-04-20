@@ -29,9 +29,11 @@ pub struct Client(ControlClient<Channel>);
 impl Client {
     pub async fn connect(backend: OciBackend) -> Result<Client, Error> {
         let channel = Channel::from_static("http://[::1]:50051")
-            .connect_with_connector(service_fn(move |_: Uri| match backend {
-                OciBackend::Docker => docker_connect("buildkitd"),
-                OciBackend::Podman => podman_connect("buildkitd")
+            .connect_with_connector(service_fn(move |_: Uri| async move {
+                match backend {
+                    OciBackend::Docker => docker_connect("buildkitd").await,
+                    OciBackend::Podman => podman_connect("buildkitd").await,
+                }
             }))
             .await?;
 
