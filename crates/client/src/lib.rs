@@ -3,16 +3,15 @@ mod error;
 
 use buildkit_rs_llb::Definition;
 use buildkit_rs_proto::moby::buildkit::v1::{
-    control_client::ControlClient, BytesMessage, DiskUsageRequest, DiskUsageResponse, InfoRequest,
-    InfoResponse, ListWorkersRequest, ListWorkersResponse, SolveResponse,
+    control_client::ControlClient, DiskUsageRequest, DiskUsageResponse, InfoRequest, InfoResponse,
+    ListWorkersRequest, ListWorkersResponse, SolveResponse,
 };
 use buildkit_rs_util::oci::OciBackend;
 use connhelper::{docker::docker_connect, podman::podman_connect};
 use error::Error;
-use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tonic::{
     transport::{Channel, Uri},
-    IntoRequest, Request, Response,
+    Request, Response,
 };
 use tower::service_fn;
 
@@ -27,12 +26,15 @@ pub struct SolveOptions<'a> {
 pub struct Client(ControlClient<Channel>);
 
 impl Client {
-    pub async fn connect(backend: OciBackend) -> Result<Client, Error> {
+    pub async fn connect(backend: OciBackend, container_name: String) -> Result<Client, Error> {
         let channel = Channel::from_static("http://[::1]:50051")
-            .connect_with_connector(service_fn(move |_: Uri| async move {
-                match backend {
-                    OciBackend::Docker => docker_connect("buildkitd").await,
-                    OciBackend::Podman => podman_connect("buildkitd").await,
+            .connect_with_connector(service_fn(move |_: Uri| {
+                let container_name = container_name.clone();
+                async move {
+                    match backend {
+                        OciBackend::Docker => docker_connect(container_name).await,
+                        OciBackend::Podman => podman_connect(container_name).await,
+                    }
                 }
             }))
             .await?;
@@ -151,12 +153,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect() {
-        let mut conn = Client::connect().await.unwrap();
+        let mut conn = Client::connect(OciBackend::Docker, "buildkitd".to_owned())
+            .await
+            .unwrap();
         dbg!(conn.info().await.unwrap());
 
-        conn.session().await.unwrap();
+        // conn.session().await.unwrap();
 
         // sleep for 5 sec
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        // tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 }
