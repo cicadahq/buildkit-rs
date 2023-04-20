@@ -182,12 +182,12 @@ impl Reference {
     ///
     /// | Rule | Example |
     /// |------|---------|
-    /// | [Named] + [Tagged] + [Digested] | `docker.io/library/busybox:latest@sha256:<digest>` |
-    /// | [Named] + [Tagged]              | `docker.io/library/busybox:latest` |
-    /// | [Named] + [Digested]            | `docker.io/library/busybo@sha256:<digest>` |
-    /// | [Named]                         | `docker.io/library/busybox` |
-    /// | [Digested]                      | `docker.io@sha256:<digest>` |
-    /// | Error                           | The reference is not valid due to not matching any of the above rules |
+    /// | \[Named\] + \[Tagged\] + \[Digested\] | `docker.io/library/busybox:latest@sha256:<digest>` |
+    /// | \[Named\] + \[Tagged\]                | `docker.io/library/busybox:latest` |
+    /// | \[Named\] + \[Digested\]              | `docker.io/library/busybo@sha256:<digest>` |
+    /// | \[Named\]                             | `docker.io/library/busybox` |
+    /// | \[Digested\]                          | `docker.io@sha256:<digest>` |
+    /// | Error                                 | The reference is not valid due to not matching any of the above rules |
     ///
     /// [Original](https://github.com/distribution/distribution/blob/e5d5810851d1f17a5070e9b6f940d8af98ea3c29/reference/sort.go)
     pub fn rank_ord(&self, other: &Self) -> Ordering {

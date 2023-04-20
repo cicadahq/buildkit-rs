@@ -11,8 +11,11 @@ repository.workspace = true
 [dependencies]
 buildkit-rs-llb = { version = "0.1.0", path = "../llb" }
 buildkit-rs-proto = { version = "0.1.0", path = "../proto" }
+buildkit-rs-util = { version = "0.1.0", path = "../util" }
+pin-project = "1.0.12"
 thiserror = "1.0.40"
 tokio = { version = "1.27.0", features = ["process", "net", "macros"] }
-tokio-util = "0.7.7"
+tokio-stream = "0.1.12"
+tokio-util = { version = "0.7.7", features = ["io"] }
 tonic = "0.9.1"
 tower = "0.4.13"

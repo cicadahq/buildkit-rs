@@ -1,19 +1,23 @@
+use pin_project::pin_project;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tokio::io::{self, AsyncRead, AsyncWrite, AsyncWriteExt};
-use tokio::process::{Child, ChildStdin, ChildStdout, Command};
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf, Result};
+use tokio::process::{Child, ChildStdin, ChildStdout};
 
+#[pin_project]
 pub(crate) struct BuildkitStdio {
     child: Child,
+    #[pin]
     stdin: ChildStdin,
+    #[pin]
     stdout: ChildStdout,
 }
 
 impl BuildkitStdio {
-    /// Create a new DockerStdioService from a container name.
-    /// 
+    /// Create a new BuildkitStdio from a container name.
+    ///
     /// ## Panics
-    /// 
+    ///
     /// This function will panic if [child] does not have a stdin or stdout.
     pub fn new(mut child: Child) -> BuildkitStdio {
         let stdin = child.stdin.take().unwrap();
@@ -26,7 +30,7 @@ impl BuildkitStdio {
         }
     }
 
-    async fn kill(&mut self) -> io::Result<()> {
+    async fn kill(&mut self) -> Result<()> {
         self.stdin.shutdown().await?;
         self.child.kill().await?;
         Ok(())
@@ -35,28 +39,36 @@ impl BuildkitStdio {
 
 impl AsyncRead for BuildkitStdio {
     fn poll_read(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-        buf: &mut io::ReadBuf<'_>,
-    ) -> Poll<std::io::Result<()>> {
-        Pin::new(&mut self.stdout).poll_read(cx, buf)
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<Result<()>> {
+        self.project().stdout.poll_read(cx, buf)
     }
 }
 
 impl AsyncWrite for BuildkitStdio {
-    fn poll_write(
-        mut self: Pin<&mut Self>,
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize>> {
+        self.project().stdin.poll_write(cx, buf)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<()>> {
+        self.project().stdin.poll_flush(cx)
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<()>> {
+        self.project().stdin.poll_shutdown(cx)
+    }
+
+    fn poll_write_vectored(
+        self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<std::io::Result<usize>> {
-        Pin::new(&mut self.stdin).poll_write(cx, buf)
+        bufs: &[std::io::IoSlice<'_>],
+    ) -> Poll<std::result::Result<usize, std::io::Error>> {
+        self.project().stdin.poll_write_vectored(cx, bufs)
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
-        Pin::new(&mut self.stdin).poll_flush(cx)
-    }
-
-    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
-        Pin::new(&mut self.stdin).poll_shutdown(cx)
+    fn is_write_vectored(&self) -> bool {
+        self.stdin.is_write_vectored()
     }
 }

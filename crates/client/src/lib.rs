@@ -3,11 +3,13 @@ mod error;
 
 use buildkit_rs_llb::Definition;
 use buildkit_rs_proto::moby::buildkit::v1::{
-    control_client::ControlClient, DiskUsageRequest, DiskUsageResponse, InfoRequest, InfoResponse,
-    SolveResponse,
+    control_client::ControlClient, BytesMessage, DiskUsageRequest, DiskUsageResponse, InfoRequest,
+    InfoResponse, ListWorkersRequest, ListWorkersResponse, SolveResponse,
 };
-use connhelper::docker::docker_connect;
+use buildkit_rs_util::oci::OciBackend;
+use connhelper::{docker::docker_connect, podman::podman_connect};
 use error::Error;
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tonic::{
     transport::{Channel, Uri},
     IntoRequest, Request, Response,
@@ -25,9 +27,12 @@ pub struct SolveOptions<'a> {
 pub struct Client(ControlClient<Channel>);
 
 impl Client {
-    pub async fn connect() -> Result<Client, Error> {
+    pub async fn connect(backend: OciBackend) -> Result<Client, Error> {
         let channel = Channel::from_static("http://[::1]:50051")
-            .connect_with_connector(service_fn(|_: Uri| docker_connect("buildkitd")))
+            .connect_with_connector(service_fn(move |_: Uri| match backend {
+                OciBackend::Docker => docker_connect("buildkitd"),
+                OciBackend::Podman => podman_connect("buildkitd")
+            }))
             .await?;
 
         Ok(Client(ControlClient::new(channel)))
@@ -44,6 +49,13 @@ impl Client {
             .map(Response::into_inner)
     }
 
+    pub async fn list_workers(&mut self) -> Result<ListWorkersResponse, tonic::Status> {
+        self.0
+            .list_workers(ListWorkersRequest { filter: vec![] })
+            .await
+            .map(Response::into_inner)
+    }
+
     pub async fn solve(
         &mut self,
         options: SolveOptions<'_>,
@@ -56,7 +68,7 @@ impl Client {
                     frontend_attrs: [("no-cache".to_owned(), "".to_owned())]
                         .into_iter()
                         .collect(),
-                    session: todo!(),
+                    // session: todo!(),
                     // exporter: todo!(),
                     // exporter_attrs: todo!(),
                     // frontend: todo!(),
@@ -73,23 +85,63 @@ impl Client {
     }
 
     // pub async fn session(&mut self) -> Result<(), tonic::Status> {
-    //     self.0.session(Request::new(())).await.map(|_| ()
+    //     let (incomming_tx, incomming_rx) = tokio::sync::mpsc::channel(1);
+    //     let (outgoing_tx, outgoing_rx) = tokio::sync::mpsc::channel(1);
+
+    //     let res = self
+    //         .0
+    //         .session(tokio_stream::wrappers::ReceiverStream::new(outgoing_rx))
+    //         .await?;
+    //     let mut inner = res.into_inner();
+
+    //     tokio::spawn(async move {
+    //         loop {
+    //             match inner.message().await {
+    //                 Ok(Some(msg)) => {
+    //                     if let Err(_) = incomming_tx.send(msg).await {
+    //                         break;
+    //                     }
+    //                 }
+    //                 Ok(None) => {
+    //                     break;
+    //                 }
+    //                 Err(_e) => {
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     });
+
+    //     tokio::spawn(async move {
+    //         tonic::transport::Server::builder()
+    //             .add_service(todo!())
+    //             .serve_with_incoming(tokio_stream::iter(vec![Ok::<_, std::io::Error>(server)]))
+    //             .await
+    //     });
+
+    //     // tokio::spawn(async move {
+    //     //     while let Some(msg) = rx.recv().await {
+    //     //         dbg!(msg);
+    //     //     }
+    //     // });
+
+    //     Ok(())
     // }
 }
 
-trait BuildkitRequestBuilder<T> {
-    fn with_buildid(self, buildid: &str) -> Request<T>;
-}
+// trait BuildkitRequestBuilder<T> {
+//     fn with_buildid(self, buildid: &str) -> Request<T>;
+// }
 
-impl<T: IntoRequest<Req>, Req> BuildkitRequestBuilder<Req> for T {
-    fn with_buildid(self, buildid: &str) -> Request<Req> {
-        let mut request = self.into_request();
-        request
-            .metadata_mut()
-            .insert("buildkit-controlapi-buildid", buildid.parse().unwrap());
-        request
-    }
-}
+// impl<T: IntoRequest<Req>, Req> BuildkitRequestBuilder<Req> for T {
+//     fn with_buildid(self, buildid: &str) -> Request<Req> {
+//         let mut request = self.into_request();
+//         request
+//             .metadata_mut()
+//             .insert("buildkit-controlapi-buildid", buildid.parse().unwrap());
+//         request
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -99,5 +151,10 @@ mod tests {
     async fn test_connect() {
         let mut conn = Client::connect().await.unwrap();
         dbg!(conn.info().await.unwrap());
+
+        conn.session().await.unwrap();
+
+        // sleep for 5 sec
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 }

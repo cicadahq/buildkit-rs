@@ -17,7 +17,7 @@ pub enum Error {
 /// as use Rust's `PathBuf` to get the cleanest path for each.
 ///
 /// Based on the implementation here, we ignore the bom stripping however:
-/// https://github.com/moby/buildkit/blob/1077362ebe0fc7e8f9c2634a49e07733a63ea1c9/frontend/dockerfile/dockerignore/dockerignore.go
+/// <https://github.com/moby/buildkit/blob/1077362ebe0fc7e8f9c2634a49e07733a63ea1c9/frontend/dockerfile/dockerignore/dockerignore.go>
 pub fn read_ignore_to_list<R: Read>(reader: R) -> Result<Vec<String>, Error> {
     let mut excludes = Vec::new();
     let mut buf_reader = BufReader::new(reader);
