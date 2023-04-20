@@ -9,6 +9,8 @@ fn main() -> Result<()> {
     let protos = [
         format!("{BUILDKIT_DIR}/frontend/gateway/pb/gateway.proto"),
         format!("{BUILDKIT_DIR}/api/services/control/control.proto"),
+        format!("{BUILDKIT_DIR}/session/auth/auth.proto"),
+        format!("{BUILDKIT_DIR}/session/secrets/secrets.proto"),
     ];
     let includes = [VENDOR_DIR.into(), format!("{BUILDKIT_DIR}/vendor")];
 

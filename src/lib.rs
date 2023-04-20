@@ -4,29 +4,10 @@
 //! re-exported here as modules. The other crates can be used individually if you
 //! want to use only a subset of the SDK.
 
-// pub use buildkit_rs_frontend as frontend;
+pub use buildkit_rs_client as client;
+pub use buildkit_rs_llb as llb;
+pub use buildkit_rs_proto as proto;
+pub use buildkit_rs_reference as reference;
+pub use buildkit_rs_ignore as ignore;
+pub use buildkit_rs_util as util;
 
-/// The BuildKit LLB API
-pub mod llb {
-    pub use buildkit_rs_llb::*;
-}
-
-/// The BuildKit protobuf definitions
-pub mod proto {
-    pub use buildkit_rs_proto::*;
-}
-
-/// Parser for image references
-pub mod reference {
-    pub use buildkit_rs_reference::*;
-}
-
-/// Ignore file parser
-pub mod ignore {
-    pub use buildkit_rs_ignore::*;
-}
-
-/// Other utilities
-pub mod util {
-    pub use buildkit_rs_util::*;
-}

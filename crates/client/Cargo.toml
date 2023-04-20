@@ -1,6 +1,6 @@
 [package]
-name = "buildkit-rs-frontend"
-description = "Buildkit frontend in Rust"
+name = "buildkit-rs-client"
+description = "Buildkit client in Rust"
 version = "0.1.0"
 edition.workspace = true
 authors.workspace = true

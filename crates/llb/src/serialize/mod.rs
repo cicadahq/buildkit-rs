@@ -6,25 +6,28 @@ use prost::Message;
 
 use crate::utils::OperationOutput;
 
-use self::node::{Context, Node, Operation};
-
-type Digest = String;
+use self::node::{Context, Node};
 
 struct Constraints;
 
+#[derive(Debug)]
 pub struct Definition<'a> {
     input: OperationOutput<'a>,
+    ignore_cache: bool,
 }
 
 impl<'a> Definition<'a> {
     pub fn new(input: OperationOutput<'a>) -> Self {
-        Self { input }
+        Self {
+            input,
+            ignore_cache: false,
+        }
     }
 }
 
 impl Definition<'_> {
     /// Convert to the protobuf representation
-    fn into_definition(&self) -> pb::Definition {
+    pub fn into_pb(&self) -> pb::Definition {
         let mut ctx = Context::new();
 
         let final_node_iter = std::iter::once(self.serialize(&mut ctx).unwrap());
@@ -32,7 +35,22 @@ impl Definition<'_> {
         let (def, metadata) = {
             ctx.into_registered_nodes()
                 .chain(final_node_iter)
-                .map(|node| (node.bytes, (node.digest, node.metadata)))
+                .map(|node| {
+                    (
+                        node.bytes,
+                        (
+                            node.digest,
+                            if self.ignore_cache {
+                                pb::OpMetadata {
+                                    ignore_cache: true,
+                                    ..Default::default()
+                                }
+                            } else {
+                                node.metadata
+                            },
+                        ),
+                    )
+                })
                 .unzip()
         };
 
@@ -41,6 +59,11 @@ impl Definition<'_> {
             metadata,
             ..Default::default()
         }
+    }
+
+    pub fn with_ignore_cache(mut self, ignore_cache: bool) -> Self {
+        self.ignore_cache = ignore_cache;
+        self
     }
 
     fn serialize(&self, ctx: &mut Context) -> Option<Node> {
@@ -59,7 +82,7 @@ impl Definition<'_> {
     // Convert to the protobuf bytes representation
     pub fn into_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
-        self.into_definition().encode(&mut buf).unwrap();
+        self.into_pb().encode(&mut buf).unwrap();
         buf
     }
 
