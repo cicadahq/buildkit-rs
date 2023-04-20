@@ -40,14 +40,15 @@ pub mod moby {
 
         pub mod secrets {
             pub mod v1 {
-                include!(concat!(env!("OUT_DIR"), "/moby.buildkit.secrets.v1.rs"));
+                include!(concat!(env!("OUT_DIR"), "/secrets.rs"));
             }
         }
     }
 
     pub mod filesync {
         pub mod v1 {
-            include!(concat!(env!("OUT_DIR"), "/moby.filesync.v1.rs"));
+            include!(concat!(env!("OUT_DIR"), "/auth.rs"));
+            include!(concat!(env!("OUT_DIR"), "/filesync.rs"));
         }
     }
 }
