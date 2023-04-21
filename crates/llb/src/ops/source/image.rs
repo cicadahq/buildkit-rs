@@ -12,7 +12,7 @@ use crate::{
         id::OperationId,
         node::{Context, Node, Operation},
     },
-    utils::{OperationOutput, OutputIdx},
+    utils::{OperationOutput, OutputIdx}, platform::Platform,
 };
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -37,6 +37,7 @@ impl ResolveMode {
 pub struct Image {
     id: OperationId,
     metadata: OpMetadata,
+    platform: Option<Platform>,
 
     reference: Reference,
     resolve_mode: Option<ResolveMode>,
@@ -49,6 +50,7 @@ impl Image {
         Self {
             id: OperationId::new(),
             metadata: OpMetadata::new(),
+            platform: None,
             reference,
             resolve_mode: None,
         }
@@ -56,6 +58,11 @@ impl Image {
 
     pub fn with_resolve_mode(mut self, mode: ResolveMode) -> Self {
         self.resolve_mode = Some(mode);
+        self
+    }
+
+    pub fn with_platform(mut self, platform: Platform) -> Self {
+        self.platform = Some(platform);
         self
     }
 }
@@ -79,6 +86,8 @@ impl Operation for Image {
                     identifier: format!("docker-image://{}", self.reference),
                     attrs,
                 })),
+
+                platform: self.platform.as_ref().map(|p| p.to_pb()),
 
                 ..Default::default()
             },

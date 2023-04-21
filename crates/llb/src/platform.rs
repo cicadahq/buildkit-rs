@@ -1,3 +1,4 @@
+use buildkit_rs_proto::pb;
 use std::{borrow::Cow, fmt};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -34,6 +35,19 @@ impl Platform {
     pub const LINUX_PPC64LE: Platform = Platform::new("linux", "ppc64le", None);
     pub const DARWIN: Platform = Platform::new("darwin", "amd64", None);
     pub const WINDOWS: Platform = Platform::new("windows", "amd64", None);
+
+    pub(crate) fn to_pb(&self) -> pb::Platform {
+        pb::Platform {
+            architecture: self.architecture.clone().into_owned(),
+            os: self.os.clone().into_owned(),
+            variant: self
+                .variant
+                .as_ref()
+                .map(|v| v.clone().into_owned())
+                .unwrap_or_default(),
+            ..Default::default()
+        }
+    }
 }
 
 impl fmt::Display for Platform {
