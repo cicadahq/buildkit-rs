@@ -53,9 +53,26 @@ impl Exec<'static> {
         }
     }
 
-    pub fn new(args: Vec<String>) -> Self {
+    pub fn new<I, S>(args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
         Self {
-            context: Some(ExecContext::new(args)),
+            context: Some(ExecContext::new(
+                args.into_iter().map(|s| s.as_ref().into()).collect(),
+            )),
+            ..Self::empty()
+        }
+    }
+
+    pub fn shell(shell: impl AsRef<str>, args: impl AsRef<str>) -> Self {
+        Self {
+            context: Some(ExecContext::new(vec![
+                shell.as_ref().into(),
+                "-c".into(),
+                args.as_ref().into(),
+            ])),
             ..Self::empty()
         }
     }
