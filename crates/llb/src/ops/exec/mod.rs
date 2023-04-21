@@ -44,13 +44,19 @@ pub struct Exec<'a> {
 }
 
 impl Exec<'static> {
-    pub fn new() -> Self {
+    fn empty() -> Self {
         Self {
             id: OperationId::new(),
             metadata: OpMetadata::new(),
-
             context: None,
             mounts: vec![],
+        }
+    }
+
+    pub fn new(args: Vec<String>) -> Self {
+        Self {
+            context: Some(ExecContext::new(args)),
+            ..Self::empty()
         }
     }
 
@@ -59,7 +65,7 @@ impl Exec<'static> {
 
         Self {
             context: Some(ExecContext::new(args)),
-            ..Self::new()
+            ..Self::empty()
         }
     }
 }
