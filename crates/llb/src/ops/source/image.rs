@@ -60,6 +60,7 @@ impl Image {
         Self {
             id: OperationId::new(),
             metadata: OpMetadata::new(),
+            platform: None,
             reference: Reference::parse(name.as_ref()).unwrap(),
             resolve_mode: Some(ResolveMode::Local),
         }
