@@ -56,6 +56,15 @@ impl Image {
         }
     }
 
+    pub fn local(name: impl AsRef<str>) -> Self {
+        Self {
+            id: OperationId::new(),
+            metadata: OpMetadata::new(),
+            reference: Reference::parse(name.as_ref()).unwrap(),
+            resolve_mode: Some(ResolveMode::Local),
+        }
+    }
+
     pub fn with_resolve_mode(mut self, mode: ResolveMode) -> Self {
         self.resolve_mode = Some(mode);
         self
