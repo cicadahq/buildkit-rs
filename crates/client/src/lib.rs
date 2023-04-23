@@ -1,25 +1,48 @@
 pub mod connhelper;
-mod error;
+pub(crate) mod error;
+pub mod session;
+pub(crate) mod util;
+
+use std::fmt::Debug;
 
 use buildkit_rs_llb::Definition;
 use buildkit_rs_proto::moby::buildkit::v1::{
     control_client::ControlClient, DiskUsageRequest, DiskUsageResponse, InfoRequest, InfoResponse,
     ListWorkersRequest, ListWorkersResponse, SolveResponse,
 };
+use buildkit_rs_proto::moby::buildkit::v1::{StatusRequest, StatusResponse};
+use buildkit_rs_proto::moby::filesync::v1::auth_server::AuthServer;
+use buildkit_rs_proto::moby::filesync::v1::file_sync_server::FileSyncServer;
 use buildkit_rs_util::oci::OciBackend;
 use connhelper::{docker::docker_connect, podman::podman_connect};
 use error::Error;
+use session::{auth::AuthService, filesync::FileSyncService};
+use tokio::io::AsyncWriteExt;
 use tonic::{
     transport::{Channel, Uri},
     Request, Response,
 };
-use tower::service_fn;
+use tonic::{Status, Streaming};
+use tower::{service_fn, ServiceBuilder};
+use tower_http::ServiceBuilderExt;
+use tracing::{debug, info};
+
+pub use crate::util::id::random_id;
+
+const HEADER_SESSION_ID: &str = "x-docker-expose-session-uuid";
+const HEADER_SESSION_NAME: &str = "x-docker-expose-session-name";
+const HEADER_SESSION_SHARED_KEY: &str = "x-docker-expose-session-sharedkey";
+const HEADER_SESSION_METHOD: &str = "x-docker-expose-session-grpc-method";
 
 #[derive(Debug)]
 pub struct SolveOptions<'a> {
-    /// Should be a random string such as UUID
     pub id: String,
+    pub session: String,
     pub definition: Definition<'a>,
+}
+
+pub struct Session {
+    pub id: String,
 }
 
 #[derive(Debug)]
@@ -72,7 +95,7 @@ impl Client {
                     frontend_attrs: [("no-cache".to_owned(), "".to_owned())]
                         .into_iter()
                         .collect(),
-                    // session: todo!(),
+                    session: options.session,
                     // exporter: todo!(),
                     // exporter_attrs: todo!(),
                     // frontend: todo!(),
@@ -85,67 +108,197 @@ impl Client {
                 },
             ))
             .await
-            .map(Response::into_inner)
+            .map(|res| res.into_inner())
     }
 
-    // pub async fn session(&mut self) -> Result<(), tonic::Status> {
-    //     let (incomming_tx, incomming_rx) = tokio::sync::mpsc::channel(1);
-    //     let (outgoing_tx, outgoing_rx) = tokio::sync::mpsc::channel(1);
+    pub async fn session(&mut self, name: impl AsRef<str>) -> Result<Session, tonic::Status> {
+        let (server_stream, client_stream) = tokio::io::duplex(4096);
 
-    //     let res = self
-    //         .0
-    //         .session(tokio_stream::wrappers::ReceiverStream::new(outgoing_rx))
-    //         .await?;
-    //     let mut inner = res.into_inner();
+        let (mut health_reporter, health_server) = tonic_health::server::health_reporter();
 
-    //     tokio::spawn(async move {
-    //         loop {
-    //             match inner.message().await {
-    //                 Ok(Some(msg)) => {
-    //                     if let Err(_) = incomming_tx.send(msg).await {
-    //                         break;
-    //                     }
-    //                 }
-    //                 Ok(None) => {
-    //                     break;
-    //                 }
-    //                 Err(_e) => {
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //     });
+        let auth = AuthService::new().into_server();
+        let file_sync = FileSyncService::new().into_server();
 
-    //     tokio::spawn(async move {
-    //         tonic::transport::Server::builder()
-    //             .add_service(todo!())
-    //             .serve_with_incoming(tokio_stream::iter(vec![Ok::<_, std::io::Error>(server)]))
-    //             .await
-    //     });
+        health_reporter
+            .set_serving::<AuthServer<AuthService>>()
+            .await;
 
-    //     // tokio::spawn(async move {
-    //     //     while let Some(msg) = rx.recv().await {
-    //     //         dbg!(msg);
-    //     //     }
-    //     // });
+        health_reporter
+            .set_serving::<FileSyncServer<FileSyncService>>()
+            .await;
 
-    //     Ok(())
-    // }
+        let layer = ServiceBuilder::new().trace_for_grpc().into_inner();
+
+        tokio::spawn(async move {
+            match tonic::transport::Server::builder()
+                .trace_fn(|_| tracing::info_span!("session server"))
+                .layer(layer)
+                .add_service(health_server)
+                .add_service(auth)
+                .add_service(file_sync)
+                .serve_with_incoming(futures::stream::iter(vec![Ok::<_, std::io::Error>(
+                    server_stream,
+                )]))
+                .await
+            {
+                Ok(()) => debug!("Server finished"),
+                Err(err) => tracing::error!(?err, "Server error"),
+            }
+        });
+
+        // In memory client
+        // let mut client = Some(client_stream);
+        // let channel = Endpoint::try_from("http://[::]:50051")
+        //     .unwrap()
+        //     .connect_with_connector(service_fn(move |_: Uri| {
+        //         let client = client.take();
+
+        //         async move {
+        //             if let Some(client) = client {
+        //                 Ok(client)
+        //             } else {
+        //                 Err(std::io::Error::new(
+        //                     std::io::ErrorKind::Other,
+        //                     "Client already taken",
+        //                 ))
+        //             }
+        //         }
+        //     }))
+        //     .await
+        //     .unwrap();
+
+        // loop {
+        //     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+        //     // health check
+        //     let mut client = tonic_health::pb::health_client::HealthClient::new(channel.clone());
+        //     let res = client
+        //         .check(tonic_health::pb::HealthCheckRequest {
+        //             // service: "moby.filesync.v1.Auth".into(),
+        //             service: "".into()
+        //         })
+        //         .await;
+
+        //     info!(?res, "Health check");
+        // }
+
+        let (client_read, mut client_write) = tokio::io::split(client_stream);
+
+        use buildkit_rs_proto::moby::buildkit::v1::BytesMessage;
+        use futures::stream::StreamExt;
+
+        let mut request =
+            Request::new(tokio_util::io::ReaderStream::new(client_read).map(|bytes| {
+                BytesMessage {
+                    data: bytes.unwrap().to_vec(),
+                }
+            }));
+
+        let id = random_id();
+
+        request
+            .metadata_mut()
+            .append(HEADER_SESSION_ID, id.parse().expect("valid header value"));
+
+        // Map the name to a valid header value so we make sure it doenst panic
+        let header_name_bytes = name
+            .as_ref()
+            .bytes()
+            .map(|b| if b >= 32 && b < 127 { b } else { b'?' })
+            .collect::<Vec<_>>();
+        let header_name = String::from_utf8_lossy(&header_name_bytes);
+
+        request.metadata_mut().append(
+            HEADER_SESSION_NAME,
+            header_name.parse().expect("valid header value"),
+        );
+
+        request.metadata_mut().append(
+            HEADER_SESSION_SHARED_KEY,
+            "".parse().expect("valid header value"),
+        );
+
+        // request.metadata_mut().append(
+        //     HEADER_SESSION_METHOD,
+        //     "/moby.filesync.v1.Auth/Credentials"
+        //         .parse()
+        //         .expect("valid header value"),
+        // );
+
+        // request.metadata_mut().append(
+        //     HEADER_SESSION_METHOD,
+        //     "/moby.filesync.v1.Auth/FetchToken"
+        //         .parse()
+        //         .expect("valid header value"),
+        // );
+
+        // request.metadata_mut().append(
+        //     HEADER_SESSION_METHOD,
+        //     "/moby.filesync.v1.Auth/GetTokenAuthority"
+        //         .parse()
+        //         .expect("valid header value"),
+        // );
+
+        // request.metadata_mut().append(
+        //     HEADER_SESSION_METHOD,
+        //     "/moby.filesync.v1.Auth/VerifyTokenAuthority"
+        //         .parse()
+        //         .expect("valid header value"),
+        // );
+
+        request.metadata_mut().append(
+            HEADER_SESSION_METHOD,
+            "/moby.filesync.v1.FileSync/DiffCopy"
+                .parse()
+                .expect("valid header value"),
+        );
+
+        request.metadata_mut().append(
+            HEADER_SESSION_METHOD,
+            "/moby.filesync.v1.FileSync/tarstream"
+                .parse()
+                .expect("valid header value"),
+        );
+
+        dbg!(&request);
+
+        let res = self.0.session(request).await?;
+
+        tokio::spawn(async move {
+            let mut inner = res.into_inner();
+
+            loop {
+                match inner.message().await {
+                    Ok(Some(msg)) => {
+                        if let Err(err) = client_write.write_all(&msg.data).await {
+                            tracing::error!(?err, "Error writing to client");
+                            break;
+                        }
+                    }
+                    Ok(None) => {
+                        info!("Session finished");
+                        break;
+                    }
+                    Err(err) => {
+                        tracing::error!(?err, "Error");
+                        break;
+                    }
+                }
+            }
+
+            info!("Client finished")
+        });
+
+        Ok(Session { id })
+    }
+
+    pub async fn status(&mut self, id: String) -> Result<Streaming<StatusResponse>, Status> {
+        self.0
+            .status(StatusRequest { r#ref: id })
+            .await
+            .map(Response::into_inner)
+    }
 }
-
-// trait BuildkitRequestBuilder<T> {
-//     fn with_buildid(self, buildid: &str) -> Request<T>;
-// }
-
-// impl<T: IntoRequest<Req>, Req> BuildkitRequestBuilder<Req> for T {
-//     fn with_buildid(self, buildid: &str) -> Request<Req> {
-//         let mut request = self.into_request();
-//         request
-//             .metadata_mut()
-//             .insert("buildkit-controlapi-buildid", buildid.parse().unwrap());
-//         request
-//     }
-// }
 
 #[cfg(test)]
 mod tests {
@@ -153,14 +306,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect() {
-        let mut conn = Client::connect(OciBackend::Docker, "buildkitd".to_owned())
+        std::env::set_var("RUST_LOG", "debug");
+        tracing_subscriber::fmt::init();
+
+        let mut conn = Client::connect(OciBackend::Docker, "cicada-buildkitd".to_owned())
             .await
             .unwrap();
         dbg!(conn.info().await.unwrap());
 
-        // conn.session().await.unwrap();
+        let session = conn.session("cicada").await.unwrap();
+
+        tokio::time::sleep(std::time::Duration::from_secs(8)).await;
 
         // sleep for 5 sec
-        // tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 }
