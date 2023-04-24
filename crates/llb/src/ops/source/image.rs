@@ -66,6 +66,16 @@ impl Image {
         }
     }
 
+    pub fn reference(reference: Reference) -> Self {
+        Self {
+            id: OperationId::new(),
+            metadata: OpMetadata::new(),
+            platform: None,
+            reference,
+            resolve_mode: None,
+        }
+    }
+
     pub fn with_resolve_mode(mut self, mode: ResolveMode) -> Self {
         self.resolve_mode = Some(mode);
         self
