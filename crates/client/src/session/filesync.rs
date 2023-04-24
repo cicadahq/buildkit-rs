@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::{fs::Metadata, os::unix::prelude::MetadataExt};
 
 use buildkit_rs_proto::{
     fsutil::types::{packet::PacketType, Packet, Stat},
@@ -243,12 +242,36 @@ async fn walk(
         let trimmed_path = entry.path().strip_prefix(root).unwrap();
         let clean_path = path_clean::clean(trimmed_path);
 
+        #[cfg(unix)]
+        let (uid, gid, size) = {
+            use std::os::unix::prelude::MetadataExt;
+
+            let uid = metadata.uid();
+            let gid = metadata.gid();
+            let size = metadata.size() as i64;
+
+            (uid, gid, size)
+        };
+
+        #[cfg(windows)]
+        let (uid, gid, size) = {
+            use std::os::windows::prelude::MetadataExt;
+
+            // TODO: this seems wrong, not sure what to do here for uid/gid, maybe default to 1000?
+            let uid = 0;
+            let gid = 0;
+
+            let size = metadata.file_size() as i64;
+
+            (uid, gid, size)
+        };
+
         let stat = Stat {
             path: clean_path.to_string_lossy().into_owned(),
             mode: FileMode::from_metadata(&metadata).bits(),
-            uid: metadata.uid(),
-            gid: metadata.gid(),
-            size: metadata.size() as i64,
+            uid,
+            gid,
+            size,
             mod_time: metadata.modified().map_or(0, |t| {
                 t.duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()

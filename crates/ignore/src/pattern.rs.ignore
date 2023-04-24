@@ -1,0 +1,141 @@
+use regex::Regex;
+
+struct PatternMatcher {
+    patterns: Vec<Pattern>,
+    exclusions: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MatchType {
+    Unknown,
+    Exact,
+    Prefix,
+    Suffix,
+    Regexp,
+}
+
+struct Pattern {
+    match_type: MatchType,
+    pattern: String,
+    regexp: Option<Regex>,
+    exclusions: bool,
+}
+
+static ESCAPE_CHARS: &[char] = &['.', '+', '(', ')', '|', '{', '}', '$'];
+
+fn should_escape(c: char) -> bool {
+    ESCAPE_CHARS.contains(&c)
+}
+
+impl Pattern {
+    pub fn compile(&mut self) -> Result<(), regex::Error> {
+        let mut reg_str = String::from("^");
+
+        let sl = std::path::MAIN_SEPARATOR.to_string();
+
+        let esc_sl = if sl == "\\" {
+            String::from("\\\\")
+        } else {
+            String::from(&sl)
+        };
+
+        let mut match_type = MatchType::Exact;
+
+        let mut chars = self.pattern.chars().peekable();
+
+        let mut i = 0;
+        while let Some(ch) = chars.next() {
+            match ch {
+                '*' => {
+                    if *chars.peek().unwrap_or(&'\0') == '*' {
+                        chars.next();
+
+                        if *chars.peek().unwrap_or(&'\0') == sl.chars().next().unwrap() {
+                            chars.next();
+                        }
+
+                        if chars.peek() == None {
+                            if match_type == MatchType::Exact {
+                                match_type = MatchType::Prefix;
+                            } else {
+                                reg_str.push_str(".*");
+                                match_type = MatchType::Regexp;
+                            }
+                        } else {
+                            reg_str.push_str(&format!("(.*{})?", esc_sl));
+                            match_type = MatchType::Regexp;
+                        }
+
+                        if i == 0 {
+                            match_type = MatchType::Suffix;
+                        }
+                    } else {
+                        reg_str.push_str(&format!("[^{}]*", esc_sl));
+                        match_type = MatchType::Regexp;
+                    }
+                }
+                '?' => {
+                    reg_str.push_str(&format!("[^{}]", esc_sl));
+                    match_type = MatchType::Regexp;
+                }
+                c if should_escape(c) => {
+                    reg_str.push_str(&format!("\\{}", c));
+                }
+                '\\' => {
+                    if sl == "\\" {
+                        reg_str.push_str(&esc_sl);
+                        continue;
+                    }
+                    if let Some(next_ch) = chars.next() {
+                        reg_str.push_str(&format!("\\{}", next_ch));
+                        match_type = MatchType::Regexp;
+                    } else {
+                        reg_str.push_str("\\");
+                    }
+                }
+                '[' | ']' => {
+                    reg_str.push(ch);
+                    match_type = MatchType::Regexp;
+                }
+                _ => {
+                    reg_str.push(ch);
+                }
+            }
+            i += 1;
+        }
+
+        self.match_type = match_type;
+
+        if self.match_type != MatchType::Regexp {
+            return Ok(());
+        }
+
+        reg_str.push_str("$");
+
+        self.regexp = Some(Regex::new(&reg_str)?);
+
+        Ok(())
+    }
+
+    fn is_match(&mut self, path: &str) -> bool {
+        if self.match_type == MatchType::Unknown {
+            self.compile();
+        }
+
+        match self.match_type {
+            MatchType::Unknown => false,
+            MatchType::Exact => path == self.pattern,
+            MatchType::Prefix => path.starts_with(&self.pattern[..self.pattern.len() - 2]),
+            MatchType::Suffix => {
+                let suffix = &self.pattern[2..];
+                if path.ends_with(suffix) {
+                    true
+                } else {
+                    suffix.starts_with(std::path::MAIN_SEPARATOR)
+                        && path == &suffix[1..suffix.len()]
+                }
+            }
+            MatchType::Regexp => self.regexp.as_ref().unwrap().is_match(path),
+        }
+    }
+}
