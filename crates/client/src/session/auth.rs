@@ -4,7 +4,7 @@ use buildkit_rs_proto::moby::filesync::v1::{
     VerifyTokenAuthorityRequest, VerifyTokenAuthorityResponse,
 };
 use tonic::{Request, Response, Status};
-use tracing::{debug, info};
+use tracing::debug;
 
 pub struct AuthService;
 

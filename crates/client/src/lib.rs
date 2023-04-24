@@ -3,9 +3,13 @@ pub(crate) mod error;
 pub mod session;
 pub(crate) mod util;
 
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::path::PathBuf;
 
 use buildkit_rs_llb::Definition;
+use buildkit_rs_proto::moby::buildkit::secrets::v1::secrets_server::SecretsServer;
+use buildkit_rs_proto::moby::buildkit::v1::BytesMessage;
 use buildkit_rs_proto::moby::buildkit::v1::{
     control_client::ControlClient, DiskUsageRequest, DiskUsageResponse, InfoRequest, InfoResponse,
     ListWorkersRequest, ListWorkersResponse, SolveResponse,
@@ -16,8 +20,11 @@ use buildkit_rs_proto::moby::filesync::v1::file_sync_server::FileSyncServer;
 use buildkit_rs_util::oci::OciBackend;
 use connhelper::{docker::docker_connect, podman::podman_connect};
 use error::Error;
+use futures::stream::StreamExt;
+use session::secret::SecretSource;
 use session::{auth::AuthService, filesync::FileSyncService};
 use tokio::io::AsyncWriteExt;
+use tokio_util::io::ReaderStream;
 use tonic::{
     transport::{Channel, Uri},
     Request, Response,
@@ -27,6 +34,7 @@ use tower::{service_fn, ServiceBuilder};
 use tower_http::ServiceBuilderExt;
 use tracing::{debug, info};
 
+use crate::session::secret::SecretService;
 pub use crate::util::id::random_id;
 
 const HEADER_SESSION_ID: &str = "x-docker-expose-session-uuid";
@@ -39,6 +47,13 @@ pub struct SolveOptions<'a> {
     pub id: String,
     pub session: String,
     pub definition: Definition<'a>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SessionOptions {
+    pub name: String,
+    pub local: HashMap<String, PathBuf>,
+    pub secrets: HashMap<String, SecretSource>,
 }
 
 pub struct Session {
@@ -111,13 +126,14 @@ impl Client {
             .map(|res| res.into_inner())
     }
 
-    pub async fn session(&mut self, name: impl AsRef<str>) -> Result<Session, tonic::Status> {
+    pub async fn session(&mut self, options: SessionOptions) -> Result<Session, tonic::Status> {
         let (server_stream, client_stream) = tokio::io::duplex(4096);
 
         let (mut health_reporter, health_server) = tonic_health::server::health_reporter();
 
         let auth = AuthService::new().into_server();
-        let file_sync = FileSyncService::new().into_server();
+        let file_sync = FileSyncService::new(options.local).into_server();
+        let secret = SecretService::new(options.secrets).into_server();
 
         health_reporter
             .set_serving::<AuthServer<AuthService>>()
@@ -125,6 +141,10 @@ impl Client {
 
         health_reporter
             .set_serving::<FileSyncServer<FileSyncService>>()
+            .await;
+
+        health_reporter
+            .set_serving::<SecretsServer<SecretService>>()
             .await;
 
         let layer = ServiceBuilder::new().trace_for_grpc().into_inner();
@@ -136,6 +156,7 @@ impl Client {
                 .add_service(health_server)
                 .add_service(auth)
                 .add_service(file_sync)
+                .add_service(secret)
                 .serve_with_incoming(futures::stream::iter(vec![Ok::<_, std::io::Error>(
                     server_stream,
                 )]))
@@ -184,15 +205,9 @@ impl Client {
 
         let (client_read, mut client_write) = tokio::io::split(client_stream);
 
-        use buildkit_rs_proto::moby::buildkit::v1::BytesMessage;
-        use futures::stream::StreamExt;
-
-        let mut request =
-            Request::new(tokio_util::io::ReaderStream::new(client_read).map(|bytes| {
-                BytesMessage {
-                    data: bytes.unwrap().to_vec(),
-                }
-            }));
+        let mut request = Request::new(ReaderStream::new(client_read).map(|bytes| BytesMessage {
+            data: bytes.unwrap().to_vec(),
+        }));
 
         let id = random_id();
 
@@ -201,8 +216,8 @@ impl Client {
             .append(HEADER_SESSION_ID, id.parse().expect("valid header value"));
 
         // Map the name to a valid header value so we make sure it doenst panic
-        let header_name_bytes = name
-            .as_ref()
+        let header_name_bytes = options
+            .name
             .bytes()
             .map(|b| if b >= 32 && b < 127 { b } else { b'?' })
             .collect::<Vec<_>>();
@@ -246,6 +261,7 @@ impl Client {
         //         .expect("valid header value"),
         // );
 
+        // TODO: make these dynamic
         request.metadata_mut().append(
             HEADER_SESSION_METHOD,
             "/moby.filesync.v1.FileSync/DiffCopy"
@@ -255,12 +271,17 @@ impl Client {
 
         request.metadata_mut().append(
             HEADER_SESSION_METHOD,
-            "/moby.filesync.v1.FileSync/tarstream"
+            "/moby.filesync.v1.FileSync/TarStream"
                 .parse()
                 .expect("valid header value"),
         );
 
-        dbg!(&request);
+        request.metadata_mut().append(
+            HEADER_SESSION_METHOD,
+            "/moby.buildkit.secrets.v1.Secrets/GetSecret"
+                .parse()
+                .expect("valid header value"),
+        );
 
         let res = self.0.session(request).await?;
 
@@ -314,7 +335,13 @@ mod tests {
             .unwrap();
         dbg!(conn.info().await.unwrap());
 
-        let session = conn.session("cicada").await.unwrap();
+        let session = conn
+            .session(SessionOptions {
+                name: "cicada".into(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
 
         tokio::time::sleep(std::time::Duration::from_secs(8)).await;
 
