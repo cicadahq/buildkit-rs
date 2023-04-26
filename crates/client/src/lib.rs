@@ -21,6 +21,7 @@ use buildkit_rs_util::oci::OciBackend;
 use connhelper::{docker::docker_connect, podman::podman_connect};
 use error::Error;
 use futures::stream::StreamExt;
+use session::filesend::FileSendService;
 use session::secret::SecretSource;
 use session::{auth::AuthService, filesync::FileSyncService};
 use tokio::io::AsyncWriteExt;
@@ -102,6 +103,22 @@ impl Client {
         &mut self,
         options: SolveOptions<'_>,
     ) -> Result<SolveResponse, tonic::Status> {
+        let config = oci_spec::image::ConfigBuilder::default()
+            .user("root".to_string())
+            // .working_dir(job.working_directory.clone())
+            .env(["ABC=123".to_owned()])
+            .cmd(["/bin/bash".to_owned()])
+            // .entrypoint(["/app/hello-world".to_owned()])
+            .build()
+            .unwrap();
+
+        let image_config = oci_spec::image::ImageConfigurationBuilder::default()
+            .config(config)
+            .build()
+            .unwrap();
+
+        let json = serde_json::to_string(&image_config).unwrap();
+
         self.0
             .solve(Request::new(
                 buildkit_rs_proto::moby::buildkit::v1::SolveRequest {
@@ -111,8 +128,13 @@ impl Client {
                         .into_iter()
                         .collect(),
                     session: options.session,
-                    // exporter: todo!(),
-                    // exporter_attrs: todo!(),
+                    exporter: "docker".to_owned(),
+                    exporter_attrs: [
+                        ("name".into(), "test".into()),
+                        ("containerimage.config".into(), json),
+                    ]
+                    .into_iter()
+                    .collect(),
                     // frontend: todo!(),
                     // cache: todo!(),
                     // entitlements: todo!(),
@@ -133,6 +155,7 @@ impl Client {
 
         let auth = AuthService::new().into_server();
         let file_sync = FileSyncService::new(options.local).into_server();
+        let file_send = FileSendService::new().into_server();
         let secret = SecretService::new(options.secrets).into_server();
 
         health_reporter
@@ -141,6 +164,10 @@ impl Client {
 
         health_reporter
             .set_serving::<FileSyncServer<FileSyncService>>()
+            .await;
+
+        health_reporter
+            .set_serving::<SecretsServer<SecretService>>()
             .await;
 
         health_reporter
@@ -156,6 +183,7 @@ impl Client {
                 .add_service(health_server)
                 .add_service(auth)
                 .add_service(file_sync)
+                .add_service(file_send)
                 .add_service(secret)
                 .serve_with_incoming(futures::stream::iter(vec![Ok::<_, std::io::Error>(
                     server_stream,
@@ -272,6 +300,13 @@ impl Client {
         request.metadata_mut().append(
             HEADER_SESSION_METHOD,
             "/moby.filesync.v1.FileSync/TarStream"
+                .parse()
+                .expect("valid header value"),
+        );
+
+        request.metadata_mut().append(
+            HEADER_SESSION_METHOD,
+            "/moby.filesync.v1.FileSend/DiffCopy"
                 .parse()
                 .expect("valid header value"),
         );
