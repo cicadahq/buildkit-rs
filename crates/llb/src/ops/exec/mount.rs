@@ -14,12 +14,12 @@ pub enum CacheSharingMode {
     Locked,
 }
 
-impl CacheSharingMode {
-    fn to_pb(&self) -> CacheSharingOpt {
-        match self {
-            CacheSharingMode::Shared => CacheSharingOpt::Shared,
-            CacheSharingMode::Private => CacheSharingOpt::Private,
-            CacheSharingMode::Locked => CacheSharingOpt::Locked,
+impl From<CacheSharingMode> for CacheSharingOpt {
+    fn from(mode: CacheSharingMode) -> Self {
+        match mode {
+            CacheSharingMode::Shared => Self::Shared,
+            CacheSharingMode::Private => Self::Private,
+            CacheSharingMode::Locked => Self::Locked,
         }
     }
 }
@@ -61,6 +61,8 @@ pub enum MountType<'a> {
 pub struct Mount<'a> {
     dest: Utf8PathBuf,
     mount_type: MountType<'a>,
+    /// Selector for layer
+    selector: Option<String>,
 }
 
 impl Mount<'_> {
@@ -70,6 +72,7 @@ impl Mount<'_> {
             mount_type: MountType::Scratch {
                 output: output.into(),
             },
+            selector: None,
         }
     }
 
@@ -84,6 +87,7 @@ impl Mount<'_> {
                 input,
                 output: Some(output.into()),
             },
+            selector: None,
         }
     }
 
@@ -94,6 +98,7 @@ impl Mount<'_> {
                 input,
                 output: None,
             },
+            selector: None,
         }
     }
 
@@ -108,6 +113,7 @@ impl Mount<'_> {
                 id: id.into(),
                 sharing,
             },
+            selector: None,
         }
     }
 
@@ -128,7 +134,13 @@ impl Mount<'_> {
                 mode,
                 optional,
             },
+            selector: None,
         }
+    }
+
+    pub fn with_selector(mut self, selector: impl Into<String>) -> Self {
+        self.selector = Some(selector.into());
+        self
     }
 
     pub(crate) fn input(&self) -> Option<&OperationOutput> {
@@ -149,11 +161,11 @@ impl Mount<'_> {
             }
             .unwrap_or(-1),
 
-            // TODO support these
-            result_id: "".into(),
-            selector: "".into(),
-
+            selector: self.selector.clone().unwrap_or_default(),
             dest: self.dest.clone().into(),
+
+            // TODO: support result_id
+            result_id: "".into(),
 
             readonly: match &self.mount_type {
                 MountType::Layer { output, .. } => output.is_none(),
@@ -175,10 +187,13 @@ impl Mount<'_> {
             },
 
             cache_opt: match &self.mount_type {
-                MountType::Cache { id, sharing } => Some(CacheOpt {
-                    id: id.clone(),
-                    sharing: sharing.to_pb().into(),
-                }),
+                MountType::Cache { id, sharing } => {
+                    let sharing_pb: CacheSharingOpt = (*sharing).into();
+                    Some(CacheOpt {
+                        id: id.clone(),
+                        sharing: sharing_pb.into(),
+                    })
+                }
                 _ => None,
             },
 

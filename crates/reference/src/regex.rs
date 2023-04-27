@@ -193,7 +193,7 @@ fn path_component() -> String {
 /// remote_name matches the remote-name of a repository. It consists of one
 /// or more forward slash (/) delimited path-components:
 ///
-///	pathComponent[[/pathComponent] ...] // e.g., "library/ubuntu"
+/// pathComponent[[/pathComponent] ...] // e.g., "library/ubuntu"
 fn remote_name() -> String {
     let path_component = path_component();
     format!(

@@ -1,5 +1,4 @@
-use rand::{self, Rng, RngCore};
-use std::io::{self, Read};
+use rand::{self, RngCore};
 
 const RANDOM_ID_ENTROPY_BYTES: usize = 17;
 const RANDOM_ID_BASE: u32 = 36;

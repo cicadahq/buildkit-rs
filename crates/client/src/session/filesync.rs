@@ -65,8 +65,7 @@ impl FileSync for FileSyncService {
             .metadata()
             .get_all(KEY_INCLUDE_PATTERNS)
             .iter()
-            .map(|v| v.to_str().ok())
-            .flatten()
+            .filter_map(|v| v.to_str().ok())
             .map(Into::into)
             .collect();
 
@@ -74,8 +73,7 @@ impl FileSync for FileSyncService {
             .metadata()
             .get_all(KEY_EXCLUDE_PATTERNS)
             .iter()
-            .map(|v| v.to_str().ok())
-            .flatten()
+            .filter_map(|v| v.to_str().ok())
             .map(Into::into)
             .collect();
 

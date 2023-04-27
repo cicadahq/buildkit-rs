@@ -6,7 +6,7 @@ bitflags! {
     /// A Rust version of <https://pkg.go.dev/io/fs#FileMode>
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     pub struct FileMode: u32 {
-        const MODE_DIR        = 1 << (32 - 1 - 0);
+        const MODE_DIR        = 1 << (32 - 1);
         const MODE_APPEND     = 1 << (32 - 1 - 1);
         const MODE_EXCLUSIVE  = 1 << (32 - 1 - 2);
         const MODE_TEMPORARY  = 1 << (32 - 1 - 3);

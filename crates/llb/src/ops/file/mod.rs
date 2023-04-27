@@ -13,8 +13,7 @@ use crate::{
         node::{Context, Node, Operation},
     },
     utils::{OperationOutput, OutputIdx},
-    MultiBorrowedLastOutput, MultiBorrowedOutput, MultiOwnedLastOutput, MultiOwnedOutput,
-    OpMetadataBuilder,
+    MultiBorrowedOutput, MultiOwnedOutput, OpMetadataBuilder,
 };
 
 use super::metadata::OpMetadata;
@@ -69,7 +68,7 @@ impl Operation for FileActions<'_> {
         &self.id
     }
 
-    fn serialize(&self, cx: &mut Context) -> Option<Node> {
+    fn serialize(&self, _cx: &mut Context) -> Option<Node> {
         let actions = vec![];
 
         Some(Node::new(

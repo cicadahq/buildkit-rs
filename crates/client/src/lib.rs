@@ -247,7 +247,7 @@ impl Client {
         let header_name_bytes = options
             .name
             .bytes()
-            .map(|b| if b >= 32 && b < 127 { b } else { b'?' })
+            .map(|b| if (32..127).contains(&b) { b } else { b'?' })
             .collect::<Vec<_>>();
         let header_name = String::from_utf8_lossy(&header_name_bytes);
 

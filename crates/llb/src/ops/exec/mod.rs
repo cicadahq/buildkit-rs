@@ -161,7 +161,6 @@ impl Operation for Exec<'_> {
                 inputs.push(pb::Input {
                     digest: node.digest.clone(),
                     index: input.output().into(),
-                    ..Default::default()
                 });
 
                 input_index += 1;
@@ -174,13 +173,12 @@ impl Operation for Exec<'_> {
             mounts.push(mount.to_pb(input_index));
         }
 
-        let meta = self.context.as_ref().map(|ctx| {
-            let mut meta = Meta::default();
-            meta.args = ctx.args.clone();
-            meta.env = ctx.env.clone();
-            meta.cwd = ctx.cwd.clone().into_owned();
-            meta.user = ctx.user.clone().into_owned();
-            meta
+        let meta = self.context.as_ref().map(|ctx| Meta {
+            args: ctx.args.clone(),
+            env: ctx.env.clone(),
+            cwd: ctx.cwd.clone().into_owned(),
+            user: ctx.user.clone().into_owned(),
+            ..Default::default()
         });
 
         let exec_op = ExecOp {

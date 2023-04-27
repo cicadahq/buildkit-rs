@@ -6,11 +6,12 @@ use buildkit_rs_proto::moby::filesync::v1::{
 use tonic::{Request, Response, Status};
 use tracing::debug;
 
+#[derive(Debug, Clone, Default)]
 pub struct AuthService;
 
 impl AuthService {
     pub fn new() -> Self {
-        Self
+        Self::default()
     }
 
     pub fn into_server(self) -> AuthServer<Self> {
