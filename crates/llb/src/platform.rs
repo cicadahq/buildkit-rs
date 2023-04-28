@@ -58,11 +58,29 @@ impl fmt::Display for Platform {
             variant,
         } = self;
 
-        write!(f, "{os}-{architecture}")?;
+        write!(f, "{os}/{architecture}")?;
         if let Some(variant) = variant {
             write!(f, "-{variant}")?;
         }
         Ok(())
+    }
+}
+
+impl std::str::FromStr for Platform {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.splitn(2, '/');
+        let os = parts.next().unwrap();
+        let mut parts = parts.next().unwrap().splitn(2, '-');
+        let architecture = parts.next().unwrap();
+        let variant = parts.next();
+
+        Ok(Self {
+            architecture: Cow::Owned(architecture.to_owned()),
+            os: Cow::Owned(os.to_owned()),
+            variant: variant.map(|v| Cow::Owned(v.to_owned())),
+        })
     }
 }
 
@@ -72,15 +90,15 @@ mod tests {
 
     #[test]
     fn platform_display() {
-        assert_eq!(Platform::LINUX_AMD64.to_string(), "linux-amd64");
-        assert_eq!(Platform::LINUX_ARMHF.to_string(), "linux-arm-v7");
-        assert_eq!(Platform::LINUX_ARM.to_string(), "linux-arm-v7");
-        assert_eq!(Platform::LINUX_ARMEL.to_string(), "linux-arm-v6");
-        assert_eq!(Platform::LINUX_ARM64.to_string(), "linux-arm64");
-        assert_eq!(Platform::LINUX_S390X.to_string(), "linux-s390x");
-        assert_eq!(Platform::LINUX_PPC64.to_string(), "linux-ppc64");
-        assert_eq!(Platform::LINUX_PPC64LE.to_string(), "linux-ppc64le");
-        assert_eq!(Platform::DARWIN.to_string(), "darwin-amd64");
-        assert_eq!(Platform::WINDOWS.to_string(), "windows-amd64");
+        assert_eq!(Platform::LINUX_AMD64.to_string(), "linux/amd64");
+        assert_eq!(Platform::LINUX_ARMHF.to_string(), "linux/arm-v7");
+        assert_eq!(Platform::LINUX_ARM.to_string(), "linux/arm-v7");
+        assert_eq!(Platform::LINUX_ARMEL.to_string(), "linux/arm-v6");
+        assert_eq!(Platform::LINUX_ARM64.to_string(), "linux/arm64");
+        assert_eq!(Platform::LINUX_S390X.to_string(), "linux/s390x");
+        assert_eq!(Platform::LINUX_PPC64.to_string(), "linux/ppc64");
+        assert_eq!(Platform::LINUX_PPC64LE.to_string(), "linux/ppc64le");
+        assert_eq!(Platform::DARWIN.to_string(), "darwin/amd64");
+        assert_eq!(Platform::WINDOWS.to_string(), "windows/amd64");
     }
 }
