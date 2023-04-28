@@ -67,7 +67,7 @@ impl fmt::Display for Platform {
 }
 
 impl std::str::FromStr for Platform {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.splitn(2, '/');
